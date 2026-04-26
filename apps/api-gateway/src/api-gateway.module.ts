@@ -5,11 +5,13 @@ import {
   ClientAppEntity,
   ClientTemplateAccessEntity,
   MessagePayloadEntity,
+  MessageRecipientEntity,
   MessageRequestEntity,
   MessageTemplateEntity,
   MessageTemplateVariableEntity,
 } from '@app/database';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { KafkaModule } from '@app/kafka';
 import { ApiGatewayController } from './api-gateway.controller';
 import { ApiGatewayService } from './api-gateway.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -33,11 +35,13 @@ import { TemplateModule } from './modules/template/template.module';
         MessageTemplateVariableEntity,
         ClientTemplateAccessEntity,
         MessageRequestEntity,
+        MessageRecipientEntity,
         MessagePayloadEntity,
       ],
       synchronize: false,
       logging: false,
     }),
+    KafkaModule,
     AuthModule,
     TemplateModule,
     MessageRequestModule,
