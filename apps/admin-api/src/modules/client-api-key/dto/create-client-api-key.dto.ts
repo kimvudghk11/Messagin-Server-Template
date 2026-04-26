@@ -18,12 +18,12 @@ export class CreateClientApiKeyDto {
   @IsEnum(ApiKeyType)
   keyType?: ApiKeyType;
 
-  @ApiPropertyOptional({ enum: ApiKeyEnvironment, description: 'Prefix source: LIVE -> mst_live_, TEST -> mst_test_' })
+  @ApiPropertyOptional({ enum: ApiKeyEnvironment, description: 'Prefix 규칙: LIVE -> mst_live_, TEST -> mst_test_' })
   @IsOptional()
   @IsEnum(ApiKeyEnvironment)
   environment?: ApiKeyEnvironment;
 
-  @ApiPropertyOptional({ description: 'ISO datetime string' })
+  @ApiPropertyOptional({ description: 'ISO 형식 날짜/시간 문자열' })
   @IsOptional()
   @IsDateString()
   expiredAt?: string;

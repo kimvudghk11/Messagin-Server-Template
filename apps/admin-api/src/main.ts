@@ -7,8 +7,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AdminApiModule);
 
   const config = new DocumentBuilder()
-    .setTitle('Messaging Admin API')
-    .setDescription('Admin API for client, key, and operation management')
+    .setTitle('메시징 관리자 API')
+    .setDescription('클라이언트, API Key, 운영 기능 관리를 위한 관리자 API')
     .setVersion('1.0.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);
