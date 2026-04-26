@@ -1,8 +1,9 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { AuthMethodType, ClientAppStatus } from '../../enums/client-auth.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_client_app')
-export class ClientAppEntity {
+export class ClientAppEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -44,9 +45,4 @@ export class ClientAppEntity {
   @Column({ name: 'rate_limit_per_minute', type: 'integer', default: 60 })
   rateLimitPerMinute!: number;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

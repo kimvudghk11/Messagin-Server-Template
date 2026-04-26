@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiKeyStatus, ApiKeyType } from '../../enums/client-auth.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_client_api_key')
 @Index('idx_tb_client_api_key_client_app_id', ['clientAppId'])
-export class ClientApiKeyEntity {
+export class ClientApiKeyEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -48,9 +49,4 @@ export class ClientApiKeyEntity {
   @Column({ name: 'last_used_at', type: 'timestamptz', nullable: true })
   lastUsedAt!: Date | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

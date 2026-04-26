@@ -1,18 +1,18 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import { ChannelType } from '../../enums/client-auth.enums';
 import {
   ChannelGroupType,
   MessagePriority,
   MessageRequestStatus,
   MessageType,
 } from '../../enums/message.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_request')
 @Index('idx_tb_message_request_client_app_id', ['clientAppId'])
 @Index('idx_tb_message_request_status', ['status'])
 @Index('idx_tb_message_request_requested_at', ['requestedAt'])
 @Index('idx_tb_message_request_template_code', ['templateCode'])
-export class MessageRequestEntity {
+export class MessageRequestEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -89,9 +89,4 @@ export class MessageRequestEntity {
   @Column({ name: 'canceled_at', type: 'timestamptz', nullable: true })
   canceledAt!: Date | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

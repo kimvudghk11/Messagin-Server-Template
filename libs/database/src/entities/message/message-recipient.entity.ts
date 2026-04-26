@@ -1,11 +1,12 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { RecipientStatus, RecipientType } from '../../enums/message.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_recipient')
 @Index('idx_tb_message_recipient_message_request_id', ['messageRequestId'])
 @Index('idx_tb_message_recipient_email', ['email'])
 @Index('idx_tb_message_recipient_phone_number', ['phoneNumber'])
-export class MessageRecipientEntity {
+export class MessageRecipientEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -44,9 +45,4 @@ export class MessageRecipientEntity {
   })
   status!: RecipientStatus;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

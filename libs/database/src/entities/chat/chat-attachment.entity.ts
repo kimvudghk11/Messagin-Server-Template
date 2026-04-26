@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseCreatedAtEntity } from '../base';
 
 @Entity('tb_chat_attachment')
-export class ChatAttachmentEntity {
+export class ChatAttachmentEntity extends BaseCreatedAtEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -20,6 +21,4 @@ export class ChatAttachmentEntity {
   @Column({ name: 'mime_type', type: 'varchar', length: 100 })
   mimeType!: string;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
 }

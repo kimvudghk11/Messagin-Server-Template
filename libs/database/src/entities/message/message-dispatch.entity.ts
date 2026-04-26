@@ -2,6 +2,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { ChannelType } from '../../enums/client-auth.enums';
 import { MessageDispatchStatus } from '../../enums/message.enums';
 import { ProviderType } from '../../enums/template.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_dispatch')
 @Index('idx_tb_message_dispatch_message_request_id', ['messageRequestId'])
@@ -10,7 +11,7 @@ import { ProviderType } from '../../enums/template.enums';
 @Index('idx_tb_message_dispatch_channel_type', ['channelType'])
 @Index('idx_tb_message_dispatch_next_retry_at', ['nextRetryAt'])
 @Index('idx_tb_message_dispatch_created_at', ['createdAt'])
-export class MessageDispatchEntity {
+export class MessageDispatchEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -83,9 +84,4 @@ export class MessageDispatchEntity {
   @Column({ name: 'failed_at', type: 'timestamptz', nullable: true })
   failedAt!: Date | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

@@ -1,10 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { TemplateVariableDataType } from '../../enums/template.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_template_variable')
 @Unique('uq_tb_message_template_variable_template_id_variable_key', ['templateId', 'variableKey'])
 @Index('idx_tb_message_template_variable_template_id', ['templateId'])
-export class MessageTemplateVariableEntity {
+export class MessageTemplateVariableEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -38,9 +39,4 @@ export class MessageTemplateVariableEntity {
   @Column({ name: 'display_order', type: 'integer', default: 1 })
   displayOrder!: number;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

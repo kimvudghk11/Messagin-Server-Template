@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { ChatMessageStatus, ChatMessageType } from '../../enums/chat.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_chat_message')
 @Index('idx_tb_chat_message_room_id_sent_at', ['roomId', 'sentAt'])
-export class ChatMessageEntity {
+export class ChatMessageEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -39,9 +40,4 @@ export class ChatMessageEntity {
   @Column({ name: 'sent_at', type: 'timestamptz', default: () => 'now()' })
   sentAt!: Date;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

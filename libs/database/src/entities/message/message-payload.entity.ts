@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { PayloadEncryptionStatus } from '../../enums/message.enums';
+import { BaseCreatedAtEntity } from '../base';
 
 @Entity('tb_message_payload')
 @Index('idx_tb_message_payload_message_request_id', ['messageRequestId'])
-export class MessagePayloadEntity {
+export class MessagePayloadEntity extends BaseCreatedAtEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -25,6 +26,4 @@ export class MessagePayloadEntity {
   })
   encryptionStatus!: PayloadEncryptionStatus;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
 }

@@ -1,10 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_client_template_access')
 @Unique('uq_tb_client_template_access_client_app_id_template_id', ['clientAppId', 'templateId'])
 @Index('idx_tb_client_template_access_client_app_id', ['clientAppId'])
 @Index('idx_tb_client_template_access_template_id', ['templateId'])
-export class ClientTemplateAccessEntity {
+export class ClientTemplateAccessEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -17,9 +18,4 @@ export class ClientTemplateAccessEntity {
   @Column({ name: 'is_allowed', type: 'boolean', default: true })
   isAllowed!: boolean;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

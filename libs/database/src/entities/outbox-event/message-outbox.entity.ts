@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { OutboxAggregateType, OutboxEventType, OutboxStatus } from '../../enums/outbox-event.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_outbox')
 @Index('idx_tb_message_outbox_status_created_at', ['status', 'createdAt'])
-export class MessageOutboxEntity {
+export class MessageOutboxEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -46,9 +47,4 @@ export class MessageOutboxEntity {
   @Column({ name: 'error_message', type: 'text', nullable: true })
   errorMessage!: string | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

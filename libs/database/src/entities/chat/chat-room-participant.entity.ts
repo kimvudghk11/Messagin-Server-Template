@@ -1,11 +1,12 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { ChatParticipantRole, ChatParticipantStatus } from '../../enums/chat.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_chat_room_participant')
 @Unique('uq_tb_chat_room_participant_room_id_user_id', ['roomId', 'userId'])
 @Index('idx_tb_chat_room_participant_room_id', ['roomId'])
 @Index('idx_tb_chat_room_participant_user_id', ['userId'])
-export class ChatRoomParticipantEntity {
+export class ChatRoomParticipantEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -37,9 +38,4 @@ export class ChatRoomParticipantEntity {
   @Column({ name: 'left_at', type: 'timestamptz', nullable: true })
   leftAt!: Date | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

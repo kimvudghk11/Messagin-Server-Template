@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { BaseCreatedAtEntity } from '../base';
 
 @Entity('tb_chat_message_read')
 @Unique('uq_tb_chat_message_read_message_id_user_id', ['messageId', 'userId'])
 @Index('idx_tb_chat_message_read_message_id', ['messageId'])
-export class ChatMessageReadEntity {
+export class ChatMessageReadEntity extends BaseCreatedAtEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -16,6 +17,4 @@ export class ChatMessageReadEntity {
   @Column({ name: 'read_at', type: 'timestamptz', default: () => 'now()' })
   readAt!: Date;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
 }

@@ -1,10 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { AdminActionType, AdminTargetType } from '../../enums/admin-audit.enums';
+import { BaseCreatedAtEntity } from '../base';
 
 @Entity('tb_admin_audit_log')
 @Index('idx_tb_admin_audit_log_admin_user_id', ['adminUserId'])
 @Index('idx_tb_admin_audit_log_target_type_target_id', ['targetType', 'targetId'])
-export class AdminAuditLogEntity {
+export class AdminAuditLogEntity extends BaseCreatedAtEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -42,6 +43,4 @@ export class AdminAuditLogEntity {
   @Column({ name: 'user_agent', type: 'text', nullable: true })
   userAgent!: string | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
 }

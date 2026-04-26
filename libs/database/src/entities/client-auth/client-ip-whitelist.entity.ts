@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_client_ip_whitelist')
 @Unique('uq_tb_client_ip_whitelist_client_app_id_ip_address', ['clientAppId', 'ipAddress'])
 @Index('idx_tb_client_ip_whitelist_client_app_id', ['clientAppId'])
-export class ClientIpWhitelistEntity {
+export class ClientIpWhitelistEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -19,9 +20,4 @@ export class ClientIpWhitelistEntity {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

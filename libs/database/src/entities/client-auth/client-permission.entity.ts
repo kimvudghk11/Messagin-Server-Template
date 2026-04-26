@@ -1,10 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { ClientPermissionType } from '../../enums/client-auth.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_client_permission')
 @Unique('uq_tb_client_permission_client_app_id_permission_type', ['clientAppId', 'permissionType'])
 @Index('idx_tb_client_permission_client_app_id', ['clientAppId'])
-export class ClientPermissionEntity {
+export class ClientPermissionEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -22,9 +23,4 @@ export class ClientPermissionEntity {
   @Column({ name: 'is_allowed', type: 'boolean', default: true })
   isAllowed!: boolean;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

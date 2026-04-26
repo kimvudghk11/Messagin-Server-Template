@@ -1,10 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { DispatchLogStatus, DispatchLogType } from '../../enums/message.enums';
+import { BaseCreatedAtEntity } from '../base';
 
 @Entity('tb_message_dispatch_log')
 @Index('idx_tb_message_dispatch_log_dispatch_id', ['dispatchId'])
 @Index('idx_tb_message_dispatch_log_logged_at', ['loggedAt'])
-export class MessageDispatchLogEntity {
+export class MessageDispatchLogEntity extends BaseCreatedAtEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -41,6 +42,4 @@ export class MessageDispatchLogEntity {
   @Column({ name: 'logged_at', type: 'timestamptz', default: () => 'now()' })
   loggedAt!: Date;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
 }

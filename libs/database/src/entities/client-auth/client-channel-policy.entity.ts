@@ -1,10 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { ChannelType } from '../../enums/client-auth.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_client_channel_policy')
 @Unique('uq_tb_client_channel_policy_client_app_id_channel_type', ['clientAppId', 'channelType'])
 @Index('idx_tb_client_channel_policy_client_app_id', ['clientAppId'])
-export class ClientChannelPolicyEntity {
+export class ClientChannelPolicyEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -28,9 +29,4 @@ export class ClientChannelPolicyEntity {
   @Column({ name: 'monthly_limit', type: 'integer', nullable: true })
   monthlyLimit!: number | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

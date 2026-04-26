@@ -1,9 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { TemplateAccessScope, TemplateCategory } from '../../enums/template.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_template')
 @Index('idx_tb_message_template_category', ['category'])
-export class MessageTemplateEntity {
+export class MessageTemplateEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -39,9 +40,4 @@ export class MessageTemplateEntity {
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy!: string | null;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }

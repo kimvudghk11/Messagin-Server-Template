@@ -1,3 +1,4 @@
+export * from './base';
 export * from './client-auth';
 export * from './template';
 export * from './message';

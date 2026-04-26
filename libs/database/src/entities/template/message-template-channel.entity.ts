@@ -1,12 +1,13 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { ChannelType } from '../../enums/client-auth.enums';
 import { ContentFormat, ProviderType, TemplateChannelStatus } from '../../enums/template.enums';
+import { BaseTimeEntity } from '../base';
 
 @Entity('tb_message_template_channel')
 @Unique('uq_tb_message_template_channel_template_id_channel_type_version', ['templateId', 'channelType', 'version'])
 @Index('idx_tb_message_template_channel_template_id', ['templateId'])
 @Index('idx_tb_message_template_channel_channel_type', ['channelType'])
-export class MessageTemplateChannelEntity {
+export class MessageTemplateChannelEntity extends BaseTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -61,9 +62,4 @@ export class MessageTemplateChannelEntity {
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault!: boolean;
 
-  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
-  createdAt!: Date;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
-  updatedAt!: Date;
 }
