@@ -1,22 +1,34 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RealtimeChatController } from './realtime-chat.controller';
 import { RealtimeChatService } from './realtime-chat.service';
+import { ChatRoomService } from './chat-room.service';
 
 describe('RealtimeChatController', () => {
-  let realtimeChatController: RealtimeChatController;
+  let controller: RealtimeChatController;
 
   beforeEach(async () => {
+    const chatRoomServiceMock: Partial<ChatRoomService> = {
+      markRead: jest.fn().mockResolvedValue(undefined),
+    };
+
     const app: TestingModule = await Test.createTestingModule({
       controllers: [RealtimeChatController],
-      providers: [RealtimeChatService],
+      providers: [
+        RealtimeChatService,
+        { provide: ChatRoomService, useValue: chatRoomServiceMock },
+      ],
     }).compile();
 
-    realtimeChatController = app.get<RealtimeChatController>(RealtimeChatController);
+    controller = app.get<RealtimeChatController>(RealtimeChatController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(realtimeChatController.getHello()).toBe('Hello World!');
-    });
+  it('health returns ok status', () => {
+    expect(controller.health()).toEqual({ status: 'ok' });
+  });
+
+  it('markRead calls chatRoomService.markRead', async () => {
+    await expect(
+      controller.markRead('room-uuid', { messageId: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000002' }),
+    ).resolves.toBeUndefined();
   });
 });

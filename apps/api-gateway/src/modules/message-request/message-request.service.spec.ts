@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { InternalServerErrorException } from '@nestjs/common';
 import {
   ApiKeyType,
@@ -86,6 +86,28 @@ describe('MessageRequestService', () => {
     kafkaService = { publishMessageSend: jest.fn() };
     const outboxRepo = { create: jest.fn().mockReturnValue({}), save: jest.fn().mockResolvedValue({}) };
 
+    // DataSource.transaction mock — runs callback with a manager that routes to repo mocks
+    const dataSourceMock = {
+      transaction: jest.fn().mockImplementation(
+        async (cb: (manager: unknown) => Promise<unknown>) => {
+          const manager = {
+            create: jest.fn().mockImplementation((EntityClass: unknown, data: unknown) => {
+              if (EntityClass === MessageRequestEntity) return requestRepo.create(data);
+              if (EntityClass === MessagePayloadEntity) return payloadRepo.create(data);
+              if (EntityClass === MessageRecipientEntity) return recipientRepo.create(data);
+              return outboxRepo.create(data);
+            }),
+            save: jest.fn()
+              .mockImplementationOnce((e: unknown) => requestRepo.save(e))
+              .mockImplementationOnce((e: unknown) => payloadRepo.save(e))
+              .mockImplementationOnce((e: unknown) => recipientRepo.save(e))
+              .mockImplementationOnce((e: unknown) => outboxRepo.save(e)),
+          };
+          return cb(manager);
+        },
+      ),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessageRequestService,
@@ -93,6 +115,7 @@ describe('MessageRequestService', () => {
         { provide: getRepositoryToken(MessagePayloadEntity), useValue: payloadRepo },
         { provide: getRepositoryToken(MessageRecipientEntity), useValue: recipientRepo },
         { provide: getRepositoryToken(MessageOutboxEntity), useValue: outboxRepo },
+        { provide: getDataSourceToken(), useValue: dataSourceMock },
         { provide: TemplateService, useValue: templateService },
         { provide: TemplateVariableValidator, useValue: variableValidator },
         { provide: KafkaService, useValue: kafkaService },

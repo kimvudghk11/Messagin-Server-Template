@@ -209,7 +209,7 @@ yarn test:watch    # watch 모드
 yarn test:cov      # 커버리지 포함
 ```
 
-현재 **95개 단위 테스트** 통과 (Jest + @nestjs/testing, 실제 DB 없이 mock 기반)
+현재 **97개 단위 테스트** 통과 (Jest + @nestjs/testing, 실제 DB 없이 mock 기반)
 
 주요 테스트 대상:
 
@@ -251,9 +251,10 @@ yarn test:cov      # 커버리지 포함
 
 ## Future Improvements
 
-- [ ] TypeORM Migration 전략 표준화 (현재 `synchronize: false`)
-- [ ] Redis 기반 Rate Limiting (현재 인메모리 — 멀티 인스턴스 미지원)
-- [ ] WebSocket 인증 (현재 roomId + userId 신뢰)
-- [ ] Chat 읽음 처리 API (tb_chat_message_read 활용)
-- [ ] Request tracing — Logger에 `x-request-id` 삽입 (현재 헤더 전파만)
-- [ ] Prometheus 메트릭 + 분산 트레이싱
+- [x] TypeORM Migration 인프라 — `libs/database/src/data-source.ts` + `migration:generate/run/revert` 스크립트
+- [x] Redis 기반 Rate Limiting — `ioredis` sorted set sliding window, 멀티 인스턴스 지원
+- [x] WebSocket 인증 — handshake `x-api-key` / `x-api-secret` 검증 (`WsAuthService`)
+- [x] Chat 읽음 처리 API — `POST /chat/rooms/:roomId/read` → `tb_chat_message_read` upsert
+- [x] Request tracing in Logger — `nestjs-cls` AsyncLocalStorage, 모든 로그에 `[req:xxx]` 자동 삽입
+- [x] Prometheus 메트릭 — HTTP 요청수/응답시간 인터셉터, `/metrics` 엔드포인트 (api-gateway, admin-api)
+- [ ] 분산 트레이싱 (OpenTelemetry + Jaeger)

@@ -17,8 +17,8 @@ import {
 import { MessageSendEvent } from '@app/contracts';
 import { KafkaService } from '@app/kafka';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { AuthenticatedClient } from '../auth/client-auth.service';
 import { TemplateService } from '../template/template.service';
 import { SendMessageRequestDto } from './dto/send-message-request.dto';
@@ -35,6 +35,8 @@ export class MessageRequestService {
     private readonly messageRecipientRepository: Repository<MessageRecipientEntity>,
     @InjectRepository(MessageOutboxEntity)
     private readonly messageOutboxRepository: Repository<MessageOutboxEntity>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
     private readonly templateService: TemplateService,
     private readonly templateVariableValidator: TemplateVariableValidator,
     private readonly kafkaService: KafkaService,
@@ -54,84 +56,84 @@ export class MessageRequestService {
 
     this.templateVariableValidator.validate(templateVariables, dto.variables);
 
-    const messageRequest = this.messageRequestRepository.create({
-      requestId: dto.requestId,
-      clientAppId: auth.clientAppId,
-      templateId: template.id,
-      templateCode: template.templateCode,
-      messageType: MessageType.TEMPLATE,
-      channelGroupType: ChannelGroupType.SINGLE,
-      requestedByUserId: null,
-      requestedBySystem: auth.appCode,
-      priority: dto.priority ?? MessagePriority.NORMAL,
-      status: MessageRequestStatus.VALIDATED,
-      callbackUrl: dto.callbackUrl ?? null,
-      metadata: {
-        ...(dto.metadata ?? {}),
-        channel: dto.channel,
-        receiver: this.receiverToRecord(dto.receiver),
-      },
-      requestedAt: new Date(),
-      validatedAt: new Date(),
-      queuedAt: null,
-      completedAt: null,
-      canceledAt: null,
-    });
+    const { savedRequest, savedRecipient, event, outboxEntry } =
+      await this.dataSource.transaction(async (manager: EntityManager) => {
+        const req = manager.create(MessageRequestEntity, {
+          requestId: dto.requestId,
+          clientAppId: auth.clientAppId,
+          templateId: template.id,
+          templateCode: template.templateCode,
+          messageType: MessageType.TEMPLATE,
+          channelGroupType: ChannelGroupType.SINGLE,
+          requestedByUserId: null,
+          requestedBySystem: auth.appCode,
+          priority: dto.priority ?? MessagePriority.NORMAL,
+          status: MessageRequestStatus.VALIDATED,
+          callbackUrl: dto.callbackUrl ?? null,
+          metadata: {
+            ...(dto.metadata ?? {}),
+            channel: dto.channel,
+            receiver: this.receiverToRecord(dto.receiver),
+          },
+          requestedAt: new Date(),
+          validatedAt: new Date(),
+          queuedAt: null,
+          completedAt: null,
+          canceledAt: null,
+        });
+        const savedRequest = await manager.save(req);
 
-    const savedRequest = await this.messageRequestRepository.save(messageRequest);
+        const payloadEntity = manager.create(MessagePayloadEntity, {
+          messageRequestId: savedRequest.id,
+          payloadJson: dto.variables,
+          maskedPayloadJson: null,
+          encryptionStatus: PayloadEncryptionStatus.PLAIN,
+        });
+        await manager.save(payloadEntity);
 
-    const payload = this.messagePayloadRepository.create({
-      messageRequestId: savedRequest.id,
-      payloadJson: dto.variables,
-      maskedPayloadJson: null,
-      encryptionStatus: PayloadEncryptionStatus.PLAIN,
-    });
+        const recipientEntity = manager.create(MessageRecipientEntity, {
+          messageRequestId: savedRequest.id,
+          recipientType: RecipientType.TO,
+          userId: dto.receiver.userId ?? null,
+          receiverName: dto.receiver.receiverName ?? null,
+          email: dto.receiver.email ?? null,
+          phoneNumber: dto.receiver.phoneNumber ?? null,
+          kakaoPhoneNumber: dto.receiver.kakaoPhoneNumber ?? null,
+          status: RecipientStatus.READY,
+        });
+        const savedRecipient = await manager.save(recipientEntity);
 
-    await this.messagePayloadRepository.save(payload);
+        const event: MessageSendEvent = {
+          messageRequestId: savedRequest.id,
+          requestId: savedRequest.requestId,
+          recipientId: savedRecipient.id,
+          clientAppId: savedRequest.clientAppId,
+          templateCode: savedRequest.templateCode ?? dto.templateCode,
+          channel: dto.channel,
+          receiver: this.receiverToRecord(dto.receiver),
+          variables: dto.variables,
+          priority: savedRequest.priority,
+          callbackUrl: savedRequest.callbackUrl,
+          requestedAt: savedRequest.requestedAt.toISOString(),
+        };
 
-    const recipient = this.messageRecipientRepository.create({
-      messageRequestId: savedRequest.id,
-      recipientType: RecipientType.TO,
-      userId: dto.receiver.userId ?? null,
-      receiverName: dto.receiver.receiverName ?? null,
-      email: dto.receiver.email ?? null,
-      phoneNumber: dto.receiver.phoneNumber ?? null,
-      kakaoPhoneNumber: dto.receiver.kakaoPhoneNumber ?? null,
-      status: RecipientStatus.READY,
-    });
+        const outboxEntry = manager.create(MessageOutboxEntity, {
+          aggregateType: OutboxAggregateType.MESSAGE_REQUEST,
+          aggregateId: savedRequest.id,
+          eventType: OutboxEventType.MESSAGE_REQUEST_CREATED,
+          eventKey: savedRequest.requestId,
+          payload: event,
+          status: OutboxStatus.PENDING,
+          publishedAt: null,
+          errorMessage: null,
+        });
+        await manager.save(outboxEntry);
 
-    const savedRecipient = await this.messageRecipientRepository.save(recipient);
-
-    const event: MessageSendEvent = {
-      messageRequestId: savedRequest.id,
-      requestId: savedRequest.requestId,
-      recipientId: savedRecipient.id,
-      clientAppId: savedRequest.clientAppId,
-      templateCode: savedRequest.templateCode ?? dto.templateCode,
-      channel: dto.channel,
-      receiver: this.receiverToRecord(dto.receiver),
-      variables: dto.variables,
-      priority: savedRequest.priority,
-      callbackUrl: savedRequest.callbackUrl,
-      requestedAt: savedRequest.requestedAt.toISOString(),
-    };
-
-    // Write to outbox for at-least-once guarantee
-    const outboxEntry = this.messageOutboxRepository.create({
-      aggregateType: OutboxAggregateType.MESSAGE_REQUEST,
-      aggregateId: savedRequest.id,
-      eventType: OutboxEventType.MESSAGE_REQUEST_CREATED,
-      eventKey: savedRequest.requestId,
-      payload: event,
-      status: OutboxStatus.PENDING,
-      publishedAt: null,
-      errorMessage: null,
-    });
-    await this.messageOutboxRepository.save(outboxEntry);
+        return { savedRequest, savedRecipient, event, outboxEntry };
+      });
 
     try {
       await this.kafkaService.publishMessageSend(event);
-      // Fast path succeeded — mark outbox as published
       outboxEntry.status = OutboxStatus.PUBLISHED;
       outboxEntry.publishedAt = new Date();
       await this.messageOutboxRepository.save(outboxEntry);

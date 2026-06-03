@@ -1,28 +1,43 @@
-import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '@app/common';
 import { RequestWithClient } from './client-auth.guard';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  private readonly windows = new Map<string, number[]>();
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithClient>();
     const { clientAppId, rateLimitPerMinute } = request.client;
 
     const now = Date.now();
     const windowStart = now - 60_000;
+    const key = `ratelimit:${clientAppId}`;
 
-    const timestamps = (this.windows.get(clientAppId) ?? []).filter((t) => t > windowStart);
+    const pipeline = this.redis.pipeline();
+    pipeline.zremrangebyscore(key, '-inf', windowStart);
+    pipeline.zadd(key, now, `${now}-${Math.random()}`);
+    pipeline.zcard(key);
+    pipeline.expire(key, 60);
+    const results = await pipeline.exec();
 
-    if (timestamps.length >= rateLimitPerMinute) {
+    const count = (results?.[2]?.[1] as number | null) ?? 0;
+
+    if (count > rateLimitPerMinute) {
       throw new HttpException(
         `Rate limit exceeded: max ${rateLimitPerMinute} requests per minute`,
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
-    timestamps.push(now);
-    this.windows.set(clientAppId, timestamps);
     return true;
   }
 }

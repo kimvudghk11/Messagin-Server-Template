@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ClsModule } from 'nestjs-cls';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientApiKeyEntity, ClientAppEntity } from '@app/database';
+import { HttpMetricsInterceptor, MetricsModule } from '@app/common';
 import { AdminApiController } from './admin-api.controller';
 import { AdminApiService } from './admin-api.service';
 import { ClientApiKeyModule } from './modules/client-api-key/client-api-key.module';
@@ -9,6 +11,7 @@ import { ClientApiKeyModule } from './modules/client-api-key/client-api-key.modu
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ClsModule.forRoot({ global: true, middleware: { mount: true } }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST ?? 'localhost',
@@ -21,8 +24,12 @@ import { ClientApiKeyModule } from './modules/client-api-key/client-api-key.modu
       logging: false,
     }),
     ClientApiKeyModule,
+    MetricsModule,
   ],
   controllers: [AdminApiController],
-  providers: [AdminApiService],
+  providers: [
+    AdminApiService,
+    { provide: APP_INTERCEPTOR, useClass: HttpMetricsInterceptor },
+  ],
 })
 export class AdminApiModule { }

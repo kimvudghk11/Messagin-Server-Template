@@ -1,11 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ChatMessageEntity, ChatRoomEntity, ChatRoomParticipantEntity } from '@app/database';
+import {
+  ChatMessageEntity,
+  ChatMessageReadEntity,
+  ChatRoomEntity,
+  ChatRoomParticipantEntity,
+  ClientApiKeyEntity,
+  ClientAppEntity,
+} from '@app/database';
 import { ChatGateway } from './chat.gateway';
 import { ChatRoomService } from './chat-room.service';
 import { RealtimeChatController } from './realtime-chat.controller';
 import { RealtimeChatService } from './realtime-chat.service';
+import { WsAuthService } from './ws-auth.service';
 
 @Module({
   imports: [
@@ -17,13 +25,27 @@ import { RealtimeChatService } from './realtime-chat.service';
       username: process.env.DB_USERNAME ?? 'postgres',
       password: process.env.DB_PASSWORD ?? 'postgres',
       database: process.env.DB_NAME ?? 'messaging',
-      entities: [ChatRoomEntity, ChatRoomParticipantEntity, ChatMessageEntity],
+      entities: [
+        ChatRoomEntity,
+        ChatRoomParticipantEntity,
+        ChatMessageEntity,
+        ChatMessageReadEntity,
+        ClientApiKeyEntity,
+        ClientAppEntity,
+      ],
       synchronize: false,
       logging: false,
     }),
-    TypeOrmModule.forFeature([ChatRoomEntity, ChatRoomParticipantEntity, ChatMessageEntity]),
+    TypeOrmModule.forFeature([
+      ChatRoomEntity,
+      ChatRoomParticipantEntity,
+      ChatMessageEntity,
+      ChatMessageReadEntity,
+      ClientApiKeyEntity,
+      ClientAppEntity,
+    ]),
   ],
   controllers: [RealtimeChatController],
-  providers: [RealtimeChatService, ChatGateway, ChatRoomService],
+  providers: [RealtimeChatService, ChatGateway, ChatRoomService, WsAuthService],
 })
-export class RealtimeChatModule { }
+export class RealtimeChatModule {}

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatRoomService } from './chat-room.service';
+import { WsAuthService, WsAuthenticatedClient } from './ws-auth.service';
 
 export interface JoinRoomPayload {
   roomId: string;
@@ -23,6 +24,12 @@ export interface SendMessagePayload {
   content: string;
 }
 
+interface AuthenticatedSocket extends Socket {
+  data: {
+    client: WsAuthenticatedClient;
+  };
+}
+
 @WebSocketGateway({ cors: { origin: '*' }, namespace: '/chat' })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -30,10 +37,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(ChatGateway.name);
 
-  constructor(private readonly chatRoomService: ChatRoomService) { }
+  constructor(
+    private readonly chatRoomService: ChatRoomService,
+    private readonly wsAuthService: WsAuthService,
+  ) {}
 
-  handleConnection(client: Socket): void {
-    this.logger.log(`Client connected: ${client.id}`);
+  async handleConnection(client: Socket): Promise<void> {
+    const auth = await this.wsAuthService.authenticate(client);
+    if (!auth) {
+      this.logger.warn(`Unauthorized WS connection rejected: ${client.id}`);
+      client.emit('error', { message: 'Unauthorized: invalid API key' });
+      client.disconnect(true);
+      return;
+    }
+    (client as AuthenticatedSocket).data.client = auth;
+    this.logger.log(`Client connected: ${client.id} [app: ${auth.appCode}]`);
   }
 
   handleDisconnect(client: Socket): void {

@@ -1,5 +1,7 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_INTERCEPTOR, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ClsModule } from 'nestjs-cls';
+import { HttpMetricsInterceptor, MetricsModule, RedisModule } from '@app/common';
 import {
   ClientApiKeyEntity,
   ClientAppEntity,
@@ -25,6 +27,9 @@ import { TemplateModule } from './modules/template/template.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ClsModule.forRoot({ global: true, middleware: { mount: true } }),
+    RedisModule.forRoot(),
+    MetricsModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST ?? 'localhost',
@@ -54,7 +59,10 @@ import { TemplateModule } from './modules/template/template.module';
     MessageRequestModule,
   ],
   controllers: [ApiGatewayController],
-  providers: [ApiGatewayService],
+  providers: [
+    ApiGatewayService,
+    { provide: APP_INTERCEPTOR, useClass: HttpMetricsInterceptor },
+  ],
 })
 export class ApiGatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
