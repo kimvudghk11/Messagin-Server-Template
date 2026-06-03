@@ -122,7 +122,7 @@ export class MessageRequestService {
       aggregateId: savedRequest.id,
       eventType: OutboxEventType.MESSAGE_REQUEST_CREATED,
       eventKey: savedRequest.requestId,
-      payload: event as unknown as Record<string, unknown>,
+      payload: event,
       status: OutboxStatus.PENDING,
       publishedAt: null,
       errorMessage: null,

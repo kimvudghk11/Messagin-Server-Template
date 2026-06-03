@@ -1,25 +1,40 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { MessageOutboxEntity, OutboxEventType, OutboxStatus } from '@app/database';
+import { MessageOutboxEntity, OutboxAggregateType, OutboxEventType, OutboxStatus } from '@app/database';
 import { KafkaService } from '@app/kafka';
+import { MessageSendEvent } from '@app/contracts';
 import { OutboxRelayService } from './outbox-relay.service';
+
+const SAMPLE_PAYLOAD: MessageSendEvent = {
+  messageRequestId: 'req-uuid',
+  requestId: 'req-001',
+  recipientId: 'rec-uuid',
+  clientAppId: 'app-uuid',
+  templateCode: 'WELCOME',
+  channel: 'EMAIL',
+  receiver: { email: 'test@example.com' },
+  variables: { name: 'Alice' },
+  priority: 'NORMAL',
+  callbackUrl: null,
+  requestedAt: new Date().toISOString(),
+};
 
 function makeOutboxEntry(overrides: Partial<MessageOutboxEntity> = {}): MessageOutboxEntity {
   return {
     id: 'outbox-uuid',
-    aggregateType: 'MESSAGE_REQUEST' as any,
+    aggregateType: OutboxAggregateType.MESSAGE_REQUEST,
     aggregateId: 'req-uuid',
     eventType: OutboxEventType.MESSAGE_REQUEST_CREATED,
     eventKey: 'req-001',
-    payload: { requestId: 'req-001', channel: 'EMAIL' } as any,
+    payload: SAMPLE_PAYLOAD,
     status: OutboxStatus.PENDING,
     publishedAt: null,
     errorMessage: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
-  } as MessageOutboxEntity;
+  } satisfies MessageOutboxEntity;
 }
 
 describe('OutboxRelayService', () => {

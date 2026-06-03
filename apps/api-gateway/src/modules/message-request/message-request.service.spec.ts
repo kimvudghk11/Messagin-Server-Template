@@ -193,7 +193,14 @@ describe('MessageRequestService', () => {
     it('re-publishes and returns QUEUED when status is VALIDATED', async () => {
       const validatedRequest = makeSavedRequest({ status: MessageRequestStatus.VALIDATED });
       const queuedRequest = makeSavedRequest({ status: MessageRequestStatus.QUEUED, queuedAt: new Date() });
-      const savedPayload = { id: 'payload-uuid', payloadJson: { name: 'Alice' } } as unknown as MessagePayloadEntity;
+      const savedPayload: MessagePayloadEntity = {
+        id: 'payload-uuid',
+        messageRequestId: 'req-entity-uuid',
+        payloadJson: { name: 'Alice' },
+        maskedPayloadJson: null,
+        encryptionStatus: PayloadEncryptionStatus.PLAIN,
+        createdAt: new Date(),
+      };
       const savedRecipient = makeSavedRecipient();
 
       requestRepo.findOne.mockResolvedValue(validatedRequest);

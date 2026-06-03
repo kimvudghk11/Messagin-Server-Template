@@ -3,16 +3,23 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ApiKeyType, ClientPermissionEntity, ClientPermissionType } from '@app/database';
+import { makeHttpExecutionContext } from '@app/common/testing';
 import { ClientPermissionGuard } from './client-permission.guard';
 import { PERMISSION_KEY } from '../decorators/require-permission.decorator';
+import { AuthenticatedClient } from '../modules/auth/client-auth.service';
 
 function makeContext(clientAppId: string, handlerPermission?: ClientPermissionType): ExecutionContext {
-  return {
-    switchToHttp: () => ({
-      getRequest: () => ({ client: { clientAppId, appCode: 'app', apiKeyId: 'key', keyType: ApiKeyType.SERVER, rateLimitPerMinute: 60 } as any }),
-    }),
-    getHandler: () => ({ [PERMISSION_KEY]: handlerPermission }),
-  } as unknown as ExecutionContext;
+  const client: AuthenticatedClient = {
+    clientAppId,
+    appCode: 'app',
+    apiKeyId: 'key',
+    keyType: ApiKeyType.SERVER,
+    rateLimitPerMinute: 60,
+  };
+  return makeHttpExecutionContext(
+    { client },
+    { [PERMISSION_KEY]: handlerPermission },
+  );
 }
 
 describe('ClientPermissionGuard', () => {
@@ -34,8 +41,8 @@ describe('ClientPermissionGuard', () => {
     guard = module.get(ClientPermissionGuard);
     reflector = module.get(Reflector);
 
-    jest.spyOn(reflector, 'get').mockImplementation((key, handler) => {
-      return (handler as unknown as Record<string, unknown>)[key as string];
+    jest.spyOn(reflector, 'get').mockImplementation((key: unknown, handler: unknown) => {
+      return (handler as Record<string, unknown>)[key as string];
     });
   });
 

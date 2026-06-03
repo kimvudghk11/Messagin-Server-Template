@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ApiKeyStatus, ApiKeyType, ClientApiKeyEntity, ClientAppEntity, ClientAppStatus } from '@app/database';
+import { makeHttpExecutionContext } from '@app/common/testing';
 import { AdminAuthGuard } from './admin-auth.guard';
 
 const PLAIN_SECRET = 'admin-plain-secret-32-bytes-xxx';
@@ -39,16 +40,14 @@ function makeClientApp(overrides: Partial<ClientAppEntity> = {}): ClientAppEntit
 }
 
 function makeContext(keyId?: string, secret?: string): ExecutionContext {
-  const request = {
-    header: (name: string) => {
+  const request: Record<string, unknown> = {
+    header: (name: string): string | undefined => {
       if (name === 'x-api-key') return keyId;
       if (name === 'x-api-secret') return secret;
       return undefined;
     },
   };
-  return {
-    switchToHttp: () => ({ getRequest: () => request }),
-  } as unknown as ExecutionContext;
+  return makeHttpExecutionContext(request);
 }
 
 describe('AdminAuthGuard', () => {

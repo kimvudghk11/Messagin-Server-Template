@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import {
+  ChannelGroupType,
   ChannelType,
   MessageDispatchEntity,
   MessageDispatchStatus,
@@ -10,6 +11,10 @@ import {
   MessageRequestEntity,
   MessagePriority,
   MessageRequestStatus,
+  MessageType,
+  PayloadEncryptionStatus,
+  RecipientStatus,
+  RecipientType,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
 import { RetrySchedulerService } from './retry-scheduler.service';
@@ -34,31 +39,51 @@ function makeRequest(): MessageRequestEntity {
     id: 'req-entity-uuid',
     requestId: 'req-001',
     clientAppId: 'app-uuid',
+    templateId: 'tpl-uuid',
     templateCode: 'WELCOME',
+    messageType: MessageType.TEMPLATE,
+    channelGroupType: ChannelGroupType.SINGLE,
+    requestedByUserId: null,
+    requestedBySystem: 'test-app',
     priority: MessagePriority.NORMAL,
+    status: MessageRequestStatus.PROCESSING,
     callbackUrl: null,
     metadata: { channel: 'EMAIL' },
     requestedAt: new Date(),
-    status: MessageRequestStatus.PROCESSING,
-  } as unknown as MessageRequestEntity;
+    validatedAt: null,
+    queuedAt: null,
+    completedAt: null,
+    canceledAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  } satisfies MessageRequestEntity;
 }
 
 function makePayload(): MessagePayloadEntity {
   return {
     id: 'payload-uuid',
+    messageRequestId: 'req-entity-uuid',
     payloadJson: { name: 'Alice' },
-  } as unknown as MessagePayloadEntity;
+    maskedPayloadJson: null,
+    encryptionStatus: PayloadEncryptionStatus.PLAIN,
+    createdAt: new Date(),
+  } satisfies MessagePayloadEntity;
 }
 
 function makeRecipient(): MessageRecipientEntity {
   return {
     id: 'recipient-uuid',
-    email: 'alice@example.com',
+    messageRequestId: 'req-entity-uuid',
+    recipientType: RecipientType.TO,
+    status: RecipientStatus.READY,
     userId: null,
     receiverName: null,
+    email: 'alice@example.com',
     phoneNumber: null,
     kakaoPhoneNumber: null,
-  } as MessageRecipientEntity;
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  } satisfies MessageRecipientEntity;
 }
 
 describe('RetrySchedulerService', () => {

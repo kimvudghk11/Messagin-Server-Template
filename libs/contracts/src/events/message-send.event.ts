@@ -1,4 +1,4 @@
-export interface MessageSendEvent {
+export interface MessageSendEvent extends Record<string, unknown> {
   messageRequestId: string;
   requestId: string;
   recipientId: string;

@@ -38,7 +38,7 @@ export class OutboxRelayService {
   private async relayEvent(entry: MessageOutboxEntity): Promise<void> {
     try {
       if (entry.eventType === OutboxEventType.MESSAGE_REQUEST_CREATED) {
-        const event = entry.payload as unknown as MessageSendEvent;
+        const event = entry.payload as MessageSendEvent;
         await this.kafkaService.publishMessageSend(event);
       } else {
         const topic = this.configService.get<string>('KAFKA_TOPIC_MESSAGE_SEND', 'message.send');

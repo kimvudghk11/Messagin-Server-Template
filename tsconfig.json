@@ -19,6 +19,7 @@
     "baseUrl": "./",
     "paths": {
       "@app/common": ["libs/common/src"],
+      "@app/common/testing": ["libs/common/src/testing"],
       "@app/contracts": ["libs/contracts/src"],
       "@app/database": ["libs/database/src"],
       "@app/auth": ["libs/auth/src"],
