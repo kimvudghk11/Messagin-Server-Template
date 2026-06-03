@@ -44,10 +44,7 @@ export class MessageRequestService {
     }
 
     const template = await this.templateService.getTemplateByCode(dto.templateCode, auth.clientAppId);
-    const templateVariables = await this.templateService.getTemplateVariables(
-      dto.templateCode,
-      auth.clientAppId,
-    );
+    const templateVariables = await this.templateService.getVariablesByTemplateId(template.id);
 
     this.templateVariableValidator.validate(templateVariables, dto.variables);
 
@@ -182,7 +179,13 @@ export class MessageRequestService {
       requestedAt: existingRequest.requestedAt.toISOString(),
     };
 
-    await this.kafkaService.publishMessageSend(event);
+    try {
+      await this.kafkaService.publishMessageSend(event);
+    } catch {
+      throw new InternalServerErrorException(
+        '메시지 요청 저장은 완료되었지만 Kafka 발행에 실패했습니다. 같은 requestId로 재시도하세요.',
+      );
+    }
 
     existingRequest.status = MessageRequestStatus.QUEUED;
     existingRequest.queuedAt = new Date();

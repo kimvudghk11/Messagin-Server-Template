@@ -6,9 +6,12 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class ReceiverDto {
   @ApiPropertyOptional({ format: 'uuid' })
@@ -59,7 +62,8 @@ export class SendMessageRequestDto {
   channel!: ChannelType;
 
   @ApiProperty({ type: ReceiverDto })
-  @IsObject()
+  @ValidateNested()
+  @Type(() => ReceiverDto)
   receiver!: ReceiverDto;
 
   @ApiProperty({ type: 'object', additionalProperties: true })
@@ -73,7 +77,7 @@ export class SendMessageRequestDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @IsUrl()
   callbackUrl?: string;
 
   @ApiPropertyOptional({ type: 'object', additionalProperties: true })

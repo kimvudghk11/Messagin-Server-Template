@@ -1,10 +1,10 @@
 import { MessageSendEvent } from '@app/contracts';
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Kafka, Producer } from 'kafkajs';
 
 @Injectable()
-export class KafkaService implements OnModuleDestroy {
+export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(KafkaService.name);
   private readonly producer: Producer;
   private isConnected = false;
@@ -24,6 +24,12 @@ export class KafkaService implements OnModuleDestroy {
     this.producer = kafka.producer();
   }
 
+  async onModuleInit(): Promise<void> {
+    await this.producer.connect();
+    this.isConnected = true;
+    this.logger.log('Kafka producer connected');
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (!this.isConnected) {
       return;
@@ -40,8 +46,6 @@ export class KafkaService implements OnModuleDestroy {
   }
 
   async publish(topic: string, key: string, payload: unknown): Promise<void> {
-    await this.ensureConnected();
-
     await this.producer.send({
       topic,
       messages: [
@@ -53,14 +57,5 @@ export class KafkaService implements OnModuleDestroy {
     });
 
     this.logger.debug(`Kafka message published: topic=${topic}, key=${key}`);
-  }
-
-  private async ensureConnected(): Promise<void> {
-    if (this.isConnected) {
-      return;
-    }
-
-    await this.producer.connect();
-    this.isConnected = true;
   }
 }

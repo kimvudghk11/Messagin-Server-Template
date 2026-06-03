@@ -42,6 +42,13 @@ export class TemplateService {
     });
   }
 
+  async getVariablesByTemplateId(templateId: string) {
+    return this.templateVariableRepository.find({
+      where: { templateId },
+      order: { displayOrder: 'ASC' },
+    });
+  }
+
   async getClientAvailableTemplates(clientAppId: string) {
     const accesses = await this.clientTemplateAccessRepository.find({
       where: { clientAppId, isAllowed: true },
