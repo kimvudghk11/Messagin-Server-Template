@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import {
   ClientApiKeyEntity,
   ClientAppEntity,
+  ClientIpWhitelistEntity,
   ClientTemplateAccessEntity,
   MessagePayloadEntity,
   MessageRecipientEntity,
@@ -31,6 +32,7 @@ import { TemplateModule } from './modules/template/template.module';
       entities: [
         ClientAppEntity,
         ClientApiKeyEntity,
+        ClientIpWhitelistEntity,
         MessageTemplateEntity,
         MessageTemplateVariableEntity,
         ClientTemplateAccessEntity,

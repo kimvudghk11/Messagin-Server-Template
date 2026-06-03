@@ -1,5 +1,12 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { ApiKeyStatus, ClientApiKeyEntity, ClientAppEntity, ClientAppStatus } from '@app/database';
+import {
+  ApiKeyStatus,
+  ApiKeyType,
+  ClientApiKeyEntity,
+  ClientAppEntity,
+  ClientAppStatus,
+  ClientIpWhitelistEntity,
+} from '@app/database';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,10 +15,12 @@ export interface AuthenticatedClient {
   clientAppId: string;
   appCode: string;
   apiKeyId: string;
+  keyType: ApiKeyType;
 }
 
 export interface HeaderAccessibleRequest {
   header(name: string): string | undefined;
+  ip?: string | undefined;
 }
 
 @Injectable()
@@ -21,6 +30,8 @@ export class ClientAuthService {
     private readonly clientApiKeyRepository: Repository<ClientApiKeyEntity>,
     @InjectRepository(ClientAppEntity)
     private readonly clientAppRepository: Repository<ClientAppEntity>,
+    @InjectRepository(ClientIpWhitelistEntity)
+    private readonly ipWhitelistRepository: Repository<ClientIpWhitelistEntity>,
   ) { }
 
   async authenticate(request: HeaderAccessibleRequest): Promise<AuthenticatedClient> {
@@ -57,10 +68,45 @@ export class ClientAuthService {
       throw new UnauthorizedException('Client app is not active');
     }
 
+    if (clientApp.isIpWhitelistEnabled) {
+      const clientIp = this.extractClientIp(request);
+      await this.assertIpAllowed(clientApp.id, clientIp);
+    }
+
+    apiKey.lastUsedAt = new Date();
+    await this.clientApiKeyRepository.save(apiKey);
+
     return {
       clientAppId: clientApp.id,
       appCode: clientApp.appCode,
       apiKeyId: apiKey.id,
+      keyType: apiKey.keyType,
     };
+  }
+
+  private extractClientIp(request: HeaderAccessibleRequest): string {
+    const forwarded = request.header('x-forwarded-for');
+    if (forwarded) {
+      // X-Forwarded-For: client, proxy1, proxy2 — first entry is the real client
+      const first = forwarded.split(',')[0]?.trim();
+      if (first) return first;
+    }
+    return request.ip ?? '0.0.0.0';
+  }
+
+  private async assertIpAllowed(clientAppId: string, clientIp: string): Promise<void> {
+    // Use PostgreSQL's inet << cidr operator: "is contained by or equals"
+    // wl.ip_address uses the actual column name because raw SQL strings in andWhere
+    // do not go through TypeORM's property-name translation.
+    const result = await this.ipWhitelistRepository
+      .createQueryBuilder('wl')
+      .where('wl.client_app_id = :clientAppId', { clientAppId })
+      .andWhere('wl.is_active = :isActive', { isActive: true })
+      .andWhere(':ip::inet << wl.ip_address', { ip: clientIp })
+      .getOne();
+
+    if (!result) {
+      throw new UnauthorizedException('IP address not allowed');
+    }
   }
 }

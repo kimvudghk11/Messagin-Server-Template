@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { InternalServerErrorException } from '@nestjs/common';
 import {
+  ApiKeyType,
   ChannelType,
   MessagePayloadEntity,
   MessagePriority,
@@ -23,6 +24,7 @@ const auth: AuthenticatedClient = {
   clientAppId: 'app-uuid',
   appCode: 'my-app',
   apiKeyId: 'key-uuid',
+  keyType: ApiKeyType.SERVER,
 };
 
 const dto: SendMessageRequestDto = {
