@@ -1,3 +1,7 @@
+import { setupTracing } from '@app/common';
+
+const sdk = setupTracing('api-gateway');
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -32,4 +36,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+bootstrap().catch(async (err) => {
+  console.error(err);
+  await sdk.shutdown();
+  process.exit(1);
+});

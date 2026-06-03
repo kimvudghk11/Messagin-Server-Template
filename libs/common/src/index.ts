@@ -4,3 +4,4 @@ export * from './middleware/request-id.middleware';
 export * from './logger';
 export * from './redis';
 export * from './metrics';
+export * from './tracing';

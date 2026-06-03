@@ -1,3 +1,7 @@
+import { setupTracing } from '@app/common';
+
+const sdk = setupTracing('worker-email');
+
 import { NestFactory } from '@nestjs/core';
 import { WorkerEmailModule } from './worker-email.module';
 
@@ -6,4 +10,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+bootstrap().catch(async (err) => {
+  console.error(err);
+  await sdk.shutdown();
+  process.exit(1);
+});

@@ -18,6 +18,20 @@ services:
       timeout: 5s
       retries: 5
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    container_name: messaging-jaeger
+    ports:
+      - '16686:16686'   # Jaeger UI
+      - '4318:4318'     # OTLP HTTP receiver
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:16686']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: messaging-redis
