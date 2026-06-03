@@ -6,6 +6,7 @@ import {
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { ClientAuthGuard } from '../../guards/client-auth.guard';
 import { TemplateController } from './template.controller';
 import { TemplateService } from './template.service';
 
@@ -19,7 +20,7 @@ import { TemplateService } from './template.service';
     ]),
   ],
   controllers: [TemplateController],
-  providers: [TemplateService],
+  providers: [TemplateService, ClientAuthGuard],
   exports: [TemplateService],
 })
 export class TemplateModule { }

@@ -16,6 +16,7 @@ export interface AuthenticatedClient {
   appCode: string;
   apiKeyId: string;
   keyType: ApiKeyType;
+  rateLimitPerMinute: number;
 }
 
 export interface HeaderAccessibleRequest {
@@ -81,13 +82,13 @@ export class ClientAuthService {
       appCode: clientApp.appCode,
       apiKeyId: apiKey.id,
       keyType: apiKey.keyType,
+      rateLimitPerMinute: clientApp.rateLimitPerMinute,
     };
   }
 
   private extractClientIp(request: HeaderAccessibleRequest): string {
     const forwarded = request.header('x-forwarded-for');
     if (forwarded) {
-      // X-Forwarded-For: client, proxy1, proxy2 — first entry is the real client
       const first = forwarded.split(',')[0]?.trim();
       if (first) return first;
     }
@@ -95,9 +96,6 @@ export class ClientAuthService {
   }
 
   private async assertIpAllowed(clientAppId: string, clientIp: string): Promise<void> {
-    // Use PostgreSQL's inet << cidr operator: "is contained by or equals"
-    // wl.ip_address uses the actual column name because raw SQL strings in andWhere
-    // do not go through TypeORM's property-name translation.
     const result = await this.ipWhitelistRepository
       .createQueryBuilder('wl')
       .where('wl.client_app_id = :clientAppId', { clientAppId })

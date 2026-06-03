@@ -4,6 +4,7 @@ import { InternalServerErrorException } from '@nestjs/common';
 import {
   ApiKeyType,
   ChannelType,
+  MessageOutboxEntity,
   MessagePayloadEntity,
   MessagePriority,
   MessageRecipientEntity,
@@ -25,6 +26,7 @@ const auth: AuthenticatedClient = {
   appCode: 'my-app',
   apiKeyId: 'key-uuid',
   keyType: ApiKeyType.SERVER,
+  rateLimitPerMinute: 60,
 };
 
 const dto: SendMessageRequestDto = {
@@ -82,6 +84,7 @@ describe('MessageRequestService', () => {
     templateService = { getTemplateByCode: jest.fn(), getVariablesByTemplateId: jest.fn() };
     variableValidator = { validate: jest.fn() };
     kafkaService = { publishMessageSend: jest.fn() };
+    const outboxRepo = { create: jest.fn().mockReturnValue({}), save: jest.fn().mockResolvedValue({}) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -89,6 +92,7 @@ describe('MessageRequestService', () => {
         { provide: getRepositoryToken(MessageRequestEntity), useValue: requestRepo },
         { provide: getRepositoryToken(MessagePayloadEntity), useValue: payloadRepo },
         { provide: getRepositoryToken(MessageRecipientEntity), useValue: recipientRepo },
+        { provide: getRepositoryToken(MessageOutboxEntity), useValue: outboxRepo },
         { provide: TemplateService, useValue: templateService },
         { provide: TemplateVariableValidator, useValue: variableValidator },
         { provide: KafkaService, useValue: kafkaService },

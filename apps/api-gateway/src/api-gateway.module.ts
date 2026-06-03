@@ -1,10 +1,12 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import {
   ClientApiKeyEntity,
   ClientAppEntity,
   ClientIpWhitelistEntity,
+  ClientPermissionEntity,
   ClientTemplateAccessEntity,
+  MessageOutboxEntity,
   MessagePayloadEntity,
   MessageRecipientEntity,
   MessageRequestEntity,
@@ -13,6 +15,7 @@ import {
 } from '@app/database';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { KafkaModule } from '@app/kafka';
+import { RequestIdMiddleware } from '@app/common';
 import { ApiGatewayController } from './api-gateway.controller';
 import { ApiGatewayService } from './api-gateway.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -33,12 +36,14 @@ import { TemplateModule } from './modules/template/template.module';
         ClientAppEntity,
         ClientApiKeyEntity,
         ClientIpWhitelistEntity,
+        ClientPermissionEntity,
         MessageTemplateEntity,
         MessageTemplateVariableEntity,
         ClientTemplateAccessEntity,
         MessageRequestEntity,
         MessageRecipientEntity,
         MessagePayloadEntity,
+        MessageOutboxEntity,
       ],
       synchronize: false,
       logging: false,
@@ -51,4 +56,8 @@ import { TemplateModule } from './modules/template/template.module';
   controllers: [ApiGatewayController],
   providers: [ApiGatewayService],
 })
-export class ApiGatewayModule { }
+export class ApiGatewayModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

@@ -1,11 +1,15 @@
 import {
   ChannelGroupType,
+  MessageOutboxEntity,
   MessagePayloadEntity,
   MessagePriority,
   MessageRecipientEntity,
   MessageRequestEntity,
   MessageRequestStatus,
   MessageType,
+  OutboxAggregateType,
+  OutboxEventType,
+  OutboxStatus,
   PayloadEncryptionStatus,
   RecipientStatus,
   RecipientType,
@@ -29,6 +33,8 @@ export class MessageRequestService {
     private readonly messagePayloadRepository: Repository<MessagePayloadEntity>,
     @InjectRepository(MessageRecipientEntity)
     private readonly messageRecipientRepository: Repository<MessageRecipientEntity>,
+    @InjectRepository(MessageOutboxEntity)
+    private readonly messageOutboxRepository: Repository<MessageOutboxEntity>,
     private readonly templateService: TemplateService,
     private readonly templateVariableValidator: TemplateVariableValidator,
     private readonly kafkaService: KafkaService,
@@ -110,9 +116,27 @@ export class MessageRequestService {
       requestedAt: savedRequest.requestedAt.toISOString(),
     };
 
+    // Write to outbox for at-least-once guarantee
+    const outboxEntry = this.messageOutboxRepository.create({
+      aggregateType: OutboxAggregateType.MESSAGE_REQUEST,
+      aggregateId: savedRequest.id,
+      eventType: OutboxEventType.MESSAGE_REQUEST_CREATED,
+      eventKey: savedRequest.requestId,
+      payload: event as unknown as Record<string, unknown>,
+      status: OutboxStatus.PENDING,
+      publishedAt: null,
+      errorMessage: null,
+    });
+    await this.messageOutboxRepository.save(outboxEntry);
+
     try {
       await this.kafkaService.publishMessageSend(event);
+      // Fast path succeeded — mark outbox as published
+      outboxEntry.status = OutboxStatus.PUBLISHED;
+      outboxEntry.publishedAt = new Date();
+      await this.messageOutboxRepository.save(outboxEntry);
     } catch {
+      // Outbox relay will pick this up and retry
       throw new InternalServerErrorException(
         '메시지 요청 저장은 완료되었지만 Kafka 발행에 실패했습니다. 같은 requestId로 재시도하세요.',
       );
@@ -142,7 +166,6 @@ export class MessageRequestService {
 
   private async handleExistingRequest(existingRequest: MessageRequestEntity) {
     // Only VALIDATED means "DB saved but Kafka failed" — safe to re-publish.
-    // All other statuses (QUEUED, PROCESSING, COMPLETED, FAILED, CANCELED) return current state.
     if (existingRequest.status !== MessageRequestStatus.VALIDATED) {
       return this.toResponse(existingRequest);
     }
@@ -210,7 +233,6 @@ export class MessageRequestService {
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       return value as Record<string, unknown>;
     }
-
     return undefined;
   }
 

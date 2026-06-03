@@ -17,6 +17,8 @@ import { randomUUID } from 'node:crypto';
 import { Consumer, Kafka } from 'kafkajs';
 import { Repository } from 'typeorm';
 
+const RETRY_BACKOFF_SECONDS = [60, 300, 900]; // 1분, 5분, 15분
+
 @Injectable()
 export class WorkerEmailService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WorkerEmailService.name);
@@ -128,9 +130,7 @@ export class WorkerEmailService implements OnModuleInit, OnModuleDestroy {
 
     const savedDispatch = await this.messageDispatchRepository.save(dispatch);
 
-    await this.writeLog(savedDispatch.id, DispatchLogType.REQUEST, DispatchLogStatus.PROCESSING, {
-      event,
-    });
+    await this.writeLog(savedDispatch.id, DispatchLogType.REQUEST, DispatchLogStatus.PROCESSING, { event });
 
     try {
       const providerMessageId = `email_${randomUUID()}`;
@@ -141,26 +141,41 @@ export class WorkerEmailService implements OnModuleInit, OnModuleDestroy {
       savedDispatch.successAt = new Date();
       await this.messageDispatchRepository.save(savedDispatch);
 
-      await this.writeLog(savedDispatch.id, DispatchLogType.SUCCESS, DispatchLogStatus.SUCCESS, {
-        providerMessageId,
-      });
+      await this.writeLog(savedDispatch.id, DispatchLogType.SUCCESS, DispatchLogStatus.SUCCESS, { providerMessageId });
 
       messageRequest.status = MessageRequestStatus.COMPLETED;
       messageRequest.completedAt = new Date();
       await this.messageRequestRepository.save(messageRequest);
     } catch (error) {
-      savedDispatch.status = MessageDispatchStatus.FAILED;
-      savedDispatch.failedAt = new Date();
-      savedDispatch.lastErrorCode = 'EMAIL_SEND_FAILED';
-      savedDispatch.lastErrorMessage = error instanceof Error ? error.message : 'Unknown error';
-      await this.messageDispatchRepository.save(savedDispatch);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const canRetry = savedDispatch.retryCount < savedDispatch.maxRetryCount;
 
-      await this.writeLog(savedDispatch.id, DispatchLogType.FAIL, DispatchLogStatus.FAILED, {
-        error: savedDispatch.lastErrorMessage,
-      });
+      if (canRetry) {
+        const backoffSeconds = RETRY_BACKOFF_SECONDS[savedDispatch.retryCount] ?? 900;
+        savedDispatch.status = MessageDispatchStatus.RETRY_WAIT;
+        savedDispatch.retryCount += 1;
+        savedDispatch.nextRetryAt = new Date(Date.now() + backoffSeconds * 1000);
+        savedDispatch.lastErrorCode = 'EMAIL_SEND_FAILED';
+        savedDispatch.lastErrorMessage = errorMessage;
+        await this.messageDispatchRepository.save(savedDispatch);
 
-      messageRequest.status = MessageRequestStatus.FAILED;
-      await this.messageRequestRepository.save(messageRequest);
+        await this.writeLog(savedDispatch.id, DispatchLogType.RETRY, DispatchLogStatus.FAILED, {
+          error: errorMessage,
+          nextRetryAt: savedDispatch.nextRetryAt,
+          retryCount: savedDispatch.retryCount,
+        });
+      } else {
+        savedDispatch.status = MessageDispatchStatus.FAILED;
+        savedDispatch.failedAt = new Date();
+        savedDispatch.lastErrorCode = 'EMAIL_SEND_FAILED';
+        savedDispatch.lastErrorMessage = errorMessage;
+        await this.messageDispatchRepository.save(savedDispatch);
+
+        await this.writeLog(savedDispatch.id, DispatchLogType.FAIL, DispatchLogStatus.FAILED, { error: errorMessage });
+
+        messageRequest.status = MessageRequestStatus.FAILED;
+        await this.messageRequestRepository.save(messageRequest);
+      }
     }
   }
 
