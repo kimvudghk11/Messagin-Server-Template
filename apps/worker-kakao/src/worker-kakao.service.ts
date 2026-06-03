@@ -58,14 +58,18 @@ export class WorkerKakaoService implements OnModuleInit, OnModuleDestroy {
           return;
         }
 
-        const raw = message.value.toString();
-        const event = JSON.parse(raw) as MessageSendEvent;
+        try {
+          const raw = message.value.toString();
+          const event = JSON.parse(raw) as MessageSendEvent;
 
-        if (event.channel !== ChannelType.KAKAO) {
-          return;
+          if (event.channel !== ChannelType.KAKAO) {
+            return;
+          }
+
+          await this.process(event);
+        } catch (error) {
+          this.logger.error('Unhandled error in eachMessage', error instanceof Error ? error.stack : error);
         }
-
-        await this.process(event);
       },
     });
 

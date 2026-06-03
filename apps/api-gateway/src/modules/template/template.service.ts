@@ -61,8 +61,8 @@ export class TemplateService {
     const templateIds = accesses.map((item) => item.templateId);
     return this.templateRepository
       .createQueryBuilder('template')
-      .where('template.is_active = true')
-      .andWhere('(template.access_scope = :publicScope OR template.id IN (:...templateIds))', {
+      .where('template.isActive = :isActive', { isActive: true })
+      .andWhere('(template.accessScope = :publicScope OR template.id IN (:...templateIds))', {
         publicScope: TemplateAccessScope.PUBLIC,
         templateIds,
       })

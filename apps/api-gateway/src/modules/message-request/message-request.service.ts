@@ -141,7 +141,9 @@ export class MessageRequestService {
   }
 
   private async handleExistingRequest(existingRequest: MessageRequestEntity) {
-    if (existingRequest.status === MessageRequestStatus.QUEUED) {
+    // Only VALIDATED means "DB saved but Kafka failed" — safe to re-publish.
+    // All other statuses (QUEUED, PROCESSING, COMPLETED, FAILED, CANCELED) return current state.
+    if (existingRequest.status !== MessageRequestStatus.VALIDATED) {
       return this.toResponse(existingRequest);
     }
 
