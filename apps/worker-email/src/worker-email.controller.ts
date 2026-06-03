@@ -1,9 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
+import { BaseWorkerController } from '@app/kafka';
 
 @Controller()
-export class WorkerEmailController {
-  @Get('health')
-  health(): { status: string } {
-    return { status: 'ok' };
-  }
-}
+export class WorkerEmailController extends BaseWorkerController {}
