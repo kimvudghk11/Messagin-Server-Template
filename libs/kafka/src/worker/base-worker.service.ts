@@ -10,7 +10,8 @@ import {
   ProviderType,
 } from '@app/database';
 import { MessageSendEvent } from '@app/contracts';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PayloadCryptoService } from '@app/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -40,6 +41,7 @@ export abstract class BaseWorkerService implements OnModuleInit, OnModuleDestroy
     protected readonly messageDispatchRepository: Repository<MessageDispatchEntity>,
     @InjectRepository(MessageDispatchLogEntity)
     protected readonly messageDispatchLogRepository: Repository<MessageDispatchLogEntity>,
+    @Optional() private readonly payloadCryptoService?: PayloadCryptoService,
   ) {
     this.logger = new Logger(this.constructor.name);
   }
@@ -69,6 +71,9 @@ export abstract class BaseWorkerService implements OnModuleInit, OnModuleDestroy
         try {
           const event = JSON.parse(message.value.toString()) as MessageSendEvent;
           if (event.channel !== this.channelType) return;
+          if (this.payloadCryptoService?.isEncrypted(event.variables)) {
+            event.variables = this.payloadCryptoService.decrypt(event.variables);
+          }
           await this.process(event);
         } catch (error) {
           this.logger.error('Unhandled error in eachMessage', error instanceof Error ? error.stack : error);

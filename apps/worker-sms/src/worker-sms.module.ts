@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { PayloadCryptoModule } from '@app/common';
 import {
   MessageDispatchEntity,
   MessageDispatchLogEntity,
@@ -19,6 +20,7 @@ import { WorkerSmsService } from './worker-sms.service';
       MessageDispatchLogEntity,
     ])),
     TypeOrmModule.forFeature([MessageRequestEntity, MessageDispatchEntity, MessageDispatchLogEntity]),
+    PayloadCryptoModule,
   ],
   controllers: [WorkerSmsController],
   providers: [WorkerSmsService],
