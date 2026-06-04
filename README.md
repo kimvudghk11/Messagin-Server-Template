@@ -254,7 +254,7 @@ yarn test:watch    # watch 모드
 yarn test:cov      # 커버리지 포함
 ```
 
-현재 **98개 단위 테스트** 통과 (Jest + @nestjs/testing, 실제 DB 없이 mock 기반)
+현재 **114개 단위 테스트** 통과 (Jest + @nestjs/testing, 실제 DB 없이 mock 기반)
 
 ### 테스트 구조
 
@@ -328,5 +328,5 @@ WebSocket handshake 시 `x-api-key` / `x-api-secret` 헤더로 인증 (`WsAuthSe
 - [ ] E2E / 통합 테스트 — 실제 DB + Kafka 연동 테스트
 - [ ] WebSocket 부하 테스트 및 수평 확장 검증 (Redis Pub/Sub Adapter)
 - [ ] Dead Letter Queue — 최대 재시도 초과 시 DLQ 토픽 전송
-- [ ] 메시지 암호화 — payload 필드 레벨 암호화 (`PayloadEncryptionStatus.ENCRYPTED`)
+- [x] 메시지 암호화 — payload 필드 레벨 암호화 (`PayloadEncryptionStatus.ENCRYPTED`)
 - [ ] Admin 감사 로그 — `tb_admin_audit_log` 실제 기록
