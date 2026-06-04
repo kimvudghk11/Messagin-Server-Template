@@ -14,6 +14,7 @@ import {
   RecipientStatus,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
+import { PayloadCryptoService } from '@app/common';
 import { MessageRequestService } from '../../../src/modules/message-request/message-request.service';
 import { TemplateService } from '../../../src/modules/template/template.service';
 import { TemplateVariableValidator } from '../../../src/modules/message-request/validator/template-variable.validator';
@@ -37,6 +38,9 @@ const dto: SendMessageRequestDto = {
   variables: { name: 'Alice' },
   priority: MessagePriority.NORMAL,
 };
+
+const ENCRYPTED_ENVELOPE = { _enc: 'enc', _iv: 'iv', _tag: 'tag' };
+const MASKED_PAYLOAD = { name: 'Al***' };
 
 function makeSavedRequest(overrides: Partial<MessageRequestEntity> = {}): MessageRequestEntity {
   return {
@@ -68,6 +72,17 @@ function makeSavedRecipient(): MessageRecipientEntity {
   } as MessageRecipientEntity;
 }
 
+function makeEncryptedPayload(): MessagePayloadEntity {
+  return {
+    id: 'payload-uuid',
+    messageRequestId: 'req-entity-uuid',
+    payloadJson: ENCRYPTED_ENVELOPE,
+    maskedPayloadJson: MASKED_PAYLOAD,
+    encryptionStatus: PayloadEncryptionStatus.ENCRYPTED,
+    createdAt: new Date(),
+  } satisfies MessagePayloadEntity;
+}
+
 describe('MessageRequestService', () => {
   let service: MessageRequestService;
   let requestRepo: { findOne: jest.Mock; create: jest.Mock; save: jest.Mock };
@@ -76,6 +91,7 @@ describe('MessageRequestService', () => {
   let templateService: { getTemplateByCode: jest.Mock; getVariablesByTemplateId: jest.Mock };
   let variableValidator: { validate: jest.Mock };
   let kafkaService: { publishMessageSend: jest.Mock };
+  let cryptoService: { encrypt: jest.Mock; decrypt: jest.Mock; mask: jest.Mock; isEncrypted: jest.Mock };
 
   beforeEach(async () => {
     requestRepo = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
@@ -84,6 +100,12 @@ describe('MessageRequestService', () => {
     templateService = { getTemplateByCode: jest.fn(), getVariablesByTemplateId: jest.fn() };
     variableValidator = { validate: jest.fn() };
     kafkaService = { publishMessageSend: jest.fn() };
+    cryptoService = {
+      encrypt: jest.fn().mockReturnValue(ENCRYPTED_ENVELOPE),
+      decrypt: jest.fn().mockReturnValue({ name: 'Alice' }),
+      mask: jest.fn().mockReturnValue(MASKED_PAYLOAD),
+      isEncrypted: jest.fn().mockImplementation((v: Record<string, unknown>) => '_enc' in v),
+    };
     const outboxRepo = { create: jest.fn().mockReturnValue({}), save: jest.fn().mockResolvedValue({}) };
 
     // DataSource.transaction mock — runs callback with a manager that routes to repo mocks
@@ -119,6 +141,7 @@ describe('MessageRequestService', () => {
         { provide: TemplateService, useValue: templateService },
         { provide: TemplateVariableValidator, useValue: variableValidator },
         { provide: KafkaService, useValue: kafkaService },
+        { provide: PayloadCryptoService, useValue: cryptoService },
       ],
     }).compile();
 
@@ -163,14 +186,25 @@ describe('MessageRequestService', () => {
       expect(result.requestId).toBe('req-001');
     });
 
-    it('saves payload with correct fields', async () => {
+    it('saves payload encrypted with maskedPayloadJson and ENCRYPTED status', async () => {
       await service.send(auth, dto);
 
+      expect(cryptoService.encrypt).toHaveBeenCalledWith(dto.variables);
+      expect(cryptoService.mask).toHaveBeenCalledWith(dto.variables);
       expect(payloadRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          payloadJson: dto.variables,
-          encryptionStatus: PayloadEncryptionStatus.PLAIN,
+          payloadJson: ENCRYPTED_ENVELOPE,
+          maskedPayloadJson: MASKED_PAYLOAD,
+          encryptionStatus: PayloadEncryptionStatus.ENCRYPTED,
         }),
+      );
+    });
+
+    it('publishes encrypted variables to Kafka', async () => {
+      await service.send(auth, dto);
+
+      expect(kafkaService.publishMessageSend).toHaveBeenCalledWith(
+        expect.objectContaining({ variables: ENCRYPTED_ENVELOPE }),
       );
     });
 
@@ -213,27 +247,20 @@ describe('MessageRequestService', () => {
   });
 
   describe('idempotent retry — VALIDATED status (Kafka previously failed)', () => {
-    it('re-publishes and returns QUEUED when status is VALIDATED', async () => {
+    it('decrypts payload and re-publishes to Kafka when status is VALIDATED', async () => {
       const validatedRequest = makeSavedRequest({ status: MessageRequestStatus.VALIDATED });
       const queuedRequest = makeSavedRequest({ status: MessageRequestStatus.QUEUED, queuedAt: new Date() });
-      const savedPayload: MessagePayloadEntity = {
-        id: 'payload-uuid',
-        messageRequestId: 'req-entity-uuid',
-        payloadJson: { name: 'Alice' },
-        maskedPayloadJson: null,
-        encryptionStatus: PayloadEncryptionStatus.PLAIN,
-        createdAt: new Date(),
-      };
       const savedRecipient = makeSavedRecipient();
 
       requestRepo.findOne.mockResolvedValue(validatedRequest);
-      payloadRepo.findOne.mockResolvedValue(savedPayload);
+      payloadRepo.findOne.mockResolvedValue(makeEncryptedPayload());
       recipientRepo.findOne.mockResolvedValue(savedRecipient);
       kafkaService.publishMessageSend.mockResolvedValue(undefined);
       requestRepo.save.mockResolvedValue(queuedRequest);
 
       const result = await service.send(auth, dto);
 
+      expect(cryptoService.decrypt).toHaveBeenCalledWith(ENCRYPTED_ENVELOPE);
       expect(kafkaService.publishMessageSend).toHaveBeenCalledTimes(1);
       expect(result.status).toBe(MessageRequestStatus.QUEUED);
     });

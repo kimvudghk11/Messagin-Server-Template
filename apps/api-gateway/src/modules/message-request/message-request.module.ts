@@ -1,5 +1,6 @@
 import { ClientPermissionEntity, MessageOutboxEntity, MessagePayloadEntity, MessageRecipientEntity, MessageRequestEntity } from '@app/database';
 import { KafkaModule } from '@app/kafka';
+import { PayloadCryptoModule } from '@app/common';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
@@ -16,6 +17,7 @@ import { TemplateVariableValidator } from './validator/template-variable.validat
     AuthModule,
     TemplateModule,
     KafkaModule,
+    PayloadCryptoModule,
     TypeOrmModule.forFeature([
       MessageRequestEntity,
       MessagePayloadEntity,

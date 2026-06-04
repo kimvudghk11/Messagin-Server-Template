@@ -16,6 +16,7 @@ import {
 } from '@app/database';
 import { MessageSendEvent } from '@app/contracts';
 import { KafkaService } from '@app/kafka';
+import { PayloadCryptoService } from '@app/common';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -40,6 +41,7 @@ export class MessageRequestService {
     private readonly templateService: TemplateService,
     private readonly templateVariableValidator: TemplateVariableValidator,
     private readonly kafkaService: KafkaService,
+    private readonly payloadCryptoService: PayloadCryptoService,
   ) { }
 
   async send(auth: AuthenticatedClient, dto: SendMessageRequestDto) {
@@ -83,11 +85,14 @@ export class MessageRequestService {
         });
         const savedRequest = await manager.save(req);
 
+        const maskedPayload = this.payloadCryptoService.mask(dto.variables);
+        const encryptedPayload = this.payloadCryptoService.encrypt(dto.variables);
+
         const payloadEntity = manager.create(MessagePayloadEntity, {
           messageRequestId: savedRequest.id,
-          payloadJson: dto.variables,
-          maskedPayloadJson: null,
-          encryptionStatus: PayloadEncryptionStatus.PLAIN,
+          payloadJson: encryptedPayload,
+          maskedPayloadJson: maskedPayload,
+          encryptionStatus: PayloadEncryptionStatus.ENCRYPTED,
         });
         await manager.save(payloadEntity);
 
@@ -111,7 +116,7 @@ export class MessageRequestService {
           templateCode: savedRequest.templateCode ?? dto.templateCode,
           channel: dto.channel,
           receiver: this.receiverToRecord(dto.receiver),
-          variables: dto.variables,
+          variables: encryptedPayload,
           priority: savedRequest.priority,
           callbackUrl: savedRequest.callbackUrl,
           requestedAt: savedRequest.requestedAt.toISOString(),
@@ -200,7 +205,9 @@ export class MessageRequestService {
       templateCode: existingRequest.templateCode ?? '',
       channel,
       receiver,
-      variables: payload.payloadJson,
+      variables: payload.encryptionStatus === PayloadEncryptionStatus.ENCRYPTED
+        ? this.payloadCryptoService.decrypt(payload.payloadJson)
+        : payload.payloadJson,
       priority: existingRequest.priority,
       callbackUrl: existingRequest.callbackUrl,
       requestedAt: existingRequest.requestedAt.toISOString(),
