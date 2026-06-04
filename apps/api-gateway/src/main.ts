@@ -5,10 +5,13 @@ const sdk = setupTracing('api-gateway');
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { ApiGatewayModule } from './api-gateway.module';
+import { HttpExceptionFilter } from '@app/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(ApiGatewayModule);
+  app.use(helmet());
 
   const config = new DocumentBuilder()
     .setTitle('메시징 API 게이트웨이')
@@ -33,6 +36,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }

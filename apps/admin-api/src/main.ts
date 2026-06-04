@@ -5,10 +5,13 @@ const sdk = setupTracing('admin-api');
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AdminApiModule } from './admin-api.module';
+import { HttpExceptionFilter } from '@app/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AdminApiModule);
+  app.use(helmet());
 
   const config = new DocumentBuilder()
     .setTitle('메시징 관리자 API')
@@ -25,6 +28,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
