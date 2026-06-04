@@ -7,3 +7,4 @@ export * from './metrics';
 export * from './tracing';
 export * from './crypto/payload-crypto.module';
 export * from './crypto/payload-crypto.service';
+export * from './filters';
