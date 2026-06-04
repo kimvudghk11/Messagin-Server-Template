@@ -17,6 +17,7 @@ import {
   RecipientType,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
+import { PayloadCryptoService } from '@app/common';
 import { RetrySchedulerService } from '../../../src/modules/retry-scheduler/retry-scheduler.service';
 
 function makeDispatch(overrides: Partial<MessageDispatchEntity> = {}): MessageDispatchEntity {
@@ -59,13 +60,16 @@ function makeRequest(): MessageRequestEntity {
   } satisfies MessageRequestEntity;
 }
 
+const ENCRYPTED_ENVELOPE = { _enc: 'enc', _iv: 'iv', _tag: 'tag' };
+const DECRYPTED_VARIABLES = { name: 'Alice' };
+
 function makePayload(): MessagePayloadEntity {
   return {
     id: 'payload-uuid',
     messageRequestId: 'req-entity-uuid',
-    payloadJson: { name: 'Alice' },
-    maskedPayloadJson: null,
-    encryptionStatus: PayloadEncryptionStatus.PLAIN,
+    payloadJson: ENCRYPTED_ENVELOPE,
+    maskedPayloadJson: { name: 'Al***' },
+    encryptionStatus: PayloadEncryptionStatus.ENCRYPTED,
     createdAt: new Date(),
   } satisfies MessagePayloadEntity;
 }
@@ -93,6 +97,7 @@ describe('RetrySchedulerService', () => {
   let payloadRepo: { findOne: jest.Mock };
   let recipientRepo: { findOne: jest.Mock };
   let kafkaService: { publishMessageSend: jest.Mock };
+  let cryptoService: { decrypt: jest.Mock; isEncrypted: jest.Mock };
 
   beforeEach(async () => {
     dispatchRepo = { find: jest.fn(), save: jest.fn() };
@@ -100,6 +105,10 @@ describe('RetrySchedulerService', () => {
     payloadRepo = { findOne: jest.fn() };
     recipientRepo = { findOne: jest.fn() };
     kafkaService = { publishMessageSend: jest.fn() };
+    cryptoService = {
+      decrypt: jest.fn().mockReturnValue(DECRYPTED_VARIABLES),
+      isEncrypted: jest.fn().mockImplementation((v: Record<string, unknown>) => '_enc' in v),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -110,6 +119,7 @@ describe('RetrySchedulerService', () => {
         { provide: getRepositoryToken(MessageRecipientEntity), useValue: recipientRepo },
         { provide: KafkaService, useValue: kafkaService },
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('message.send') } },
+        { provide: PayloadCryptoService, useValue: cryptoService },
       ],
     }).compile();
 
@@ -137,6 +147,22 @@ describe('RetrySchedulerService', () => {
     expect(kafkaService.publishMessageSend).toHaveBeenCalledTimes(1);
     expect(dispatchRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ status: MessageDispatchStatus.PROCESSING, nextRetryAt: null }),
+    );
+  });
+
+  it('decrypts encrypted payload before publishing plaintext to Kafka', async () => {
+    dispatchRepo.find.mockResolvedValue([makeDispatch()]);
+    requestRepo.findOne.mockResolvedValue(makeRequest());
+    payloadRepo.findOne.mockResolvedValue(makePayload());
+    recipientRepo.findOne.mockResolvedValue(makeRecipient());
+    kafkaService.publishMessageSend.mockResolvedValue(undefined);
+    dispatchRepo.save.mockResolvedValue({});
+
+    await service.retryPendingDispatches();
+
+    expect(cryptoService.decrypt).toHaveBeenCalledWith(ENCRYPTED_ENVELOPE);
+    expect(kafkaService.publishMessageSend).toHaveBeenCalledWith(
+      expect.objectContaining({ variables: DECRYPTED_VARIABLES }),
     );
   });
 

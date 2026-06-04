@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { KafkaModule } from '@app/kafka';
+import { PayloadCryptoModule } from '@app/common';
 import {
   MessageDispatchEntity,
   MessageOutboxEntity,
@@ -35,6 +36,7 @@ import { OutboxRelayService } from './modules/outbox-relay/outbox-relay.service'
       MessageOutboxEntity,
     ]),
     KafkaModule,
+    PayloadCryptoModule,
   ],
   controllers: [MainController],
   providers: [MainService, RetrySchedulerService, OutboxRelayService],

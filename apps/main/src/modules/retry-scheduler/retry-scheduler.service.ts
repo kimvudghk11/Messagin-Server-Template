@@ -9,9 +9,11 @@ import {
   MessagePayloadEntity,
   MessageRecipientEntity,
   MessageRequestEntity,
+  PayloadEncryptionStatus,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
 import { MessageSendEvent } from '@app/contracts';
+import { PayloadCryptoService } from '@app/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -29,6 +31,7 @@ export class RetrySchedulerService {
     @InjectRepository(MessageRecipientEntity)
     private readonly recipientRepository: Repository<MessageRecipientEntity>,
     private readonly kafkaService: KafkaService,
+    private readonly payloadCryptoService: PayloadCryptoService,
   ) { }
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -67,6 +70,11 @@ export class RetrySchedulerService {
       const metadata = (request.metadata ?? {}) as Record<string, unknown>;
       const channel = typeof metadata['channel'] === 'string' ? metadata['channel'] : ChannelType.EMAIL;
 
+      const variables =
+        payload.encryptionStatus === PayloadEncryptionStatus.ENCRYPTED
+          ? this.payloadCryptoService.decrypt(payload.payloadJson)
+          : payload.payloadJson;
+
       const event: MessageSendEvent = {
         messageRequestId: request.id,
         requestId: request.requestId,
@@ -81,7 +89,7 @@ export class RetrySchedulerService {
           phoneNumber: recipient.phoneNumber,
           kakaoPhoneNumber: recipient.kakaoPhoneNumber,
         },
-        variables: payload.payloadJson,
+        variables,
         priority: request.priority,
         callbackUrl: request.callbackUrl,
         requestedAt: request.requestedAt.toISOString(),
