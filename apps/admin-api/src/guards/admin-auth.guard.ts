@@ -56,6 +56,8 @@ export class AdminAuthGuard implements CanActivate {
     apiKey.lastUsedAt = new Date();
     await this.clientApiKeyRepository.save(apiKey);
 
+    (request as unknown as Record<string, unknown>)['adminKeyId'] = apiKey.id;
+
     return true;
   }
 }

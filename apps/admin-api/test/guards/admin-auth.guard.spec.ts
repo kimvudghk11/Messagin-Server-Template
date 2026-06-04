@@ -179,4 +179,23 @@ describe('AdminAuthGuard', () => {
       new UnauthorizedException('Client app is not active'),
     );
   });
+
+  it('sets adminKeyId on request after successful auth', async () => {
+    apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
+    apiKeyRepo.save.mockResolvedValue({});
+    appRepo.findOne.mockResolvedValue(makeClientApp());
+
+    const request: Record<string, unknown> = {
+      header: (name: string): string | undefined => {
+        if (name === 'x-api-key') return 'mst_live_admin123';
+        if (name === 'x-api-secret') return PLAIN_SECRET;
+        return undefined;
+      },
+    };
+    const ctx = makeHttpExecutionContext(request);
+
+    await guard.canActivate(ctx);
+
+    expect(request['adminKeyId']).toBe('admin-key-uuid');
+  });
 });
