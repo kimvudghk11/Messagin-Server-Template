@@ -14,11 +14,11 @@ import {
   RecipientStatus,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
-import { MessageRequestService } from './message-request.service';
-import { TemplateService } from '../template/template.service';
-import { TemplateVariableValidator } from './validator/template-variable.validator';
-import { AuthenticatedClient } from '../auth/client-auth.service';
-import { SendMessageRequestDto } from './dto/send-message-request.dto';
+import { MessageRequestService } from '../../../src/modules/message-request/message-request.service';
+import { TemplateService } from '../../../src/modules/template/template.service';
+import { TemplateVariableValidator } from '../../../src/modules/message-request/validator/template-variable.validator';
+import { AuthenticatedClient } from '../../../src/modules/auth/client-auth.service';
+import { SendMessageRequestDto } from '../../../src/modules/message-request/dto/send-message-request.dto';
 import { TemplateCategory, TemplateAccessScope } from '@app/database';
 
 const auth: AuthenticatedClient = {

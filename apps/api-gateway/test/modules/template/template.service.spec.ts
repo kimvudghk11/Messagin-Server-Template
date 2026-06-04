@@ -9,7 +9,7 @@ import {
   TemplateCategory,
   TemplateVariableDataType,
 } from '@app/database';
-import { TemplateService } from './template.service';
+import { TemplateService } from '../../../src/modules/template/template.service';
 
 function makeTemplate(overrides: Partial<MessageTemplateEntity> = {}): MessageTemplateEntity {
   return {

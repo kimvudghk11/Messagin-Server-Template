@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WorkerKakaoController } from './worker-kakao.controller';
+import { WorkerKakaoController } from '../src/worker-kakao.controller';
 
 describe('WorkerKakaoController', () => {
   let workerKakaoController: WorkerKakaoController;

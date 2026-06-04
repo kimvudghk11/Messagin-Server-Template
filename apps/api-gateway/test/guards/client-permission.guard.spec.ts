@@ -4,9 +4,9 @@ import { Reflector } from '@nestjs/core';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ApiKeyType, ClientPermissionEntity, ClientPermissionType } from '@app/database';
 import { makeHttpExecutionContext } from '@app/common/testing';
-import { ClientPermissionGuard } from './client-permission.guard';
-import { PERMISSION_KEY } from '../decorators/require-permission.decorator';
-import { AuthenticatedClient } from '../modules/auth/client-auth.service';
+import { ClientPermissionGuard } from '../../src/guards/client-permission.guard';
+import { PERMISSION_KEY } from '../../src/decorators/require-permission.decorator';
+import { AuthenticatedClient } from '../../src/modules/auth/client-auth.service';
 
 function makeContext(clientAppId: string, handlerPermission?: ClientPermissionType): ExecutionContext {
   const client: AuthenticatedClient = {

@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { MessageOutboxEntity, OutboxAggregateType, OutboxEventType, OutboxStatus } from '@app/database';
 import { KafkaService } from '@app/kafka';
 import { MessageSendEvent } from '@app/contracts';
-import { OutboxRelayService } from './outbox-relay.service';
+import { OutboxRelayService } from '../../../src/modules/outbox-relay/outbox-relay.service';
 
 const SAMPLE_PAYLOAD: MessageSendEvent = {
   messageRequestId: 'req-uuid',

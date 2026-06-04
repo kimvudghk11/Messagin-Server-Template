@@ -2,9 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
 import { makeHttpExecutionContext } from '@app/common/testing';
 import { REDIS_CLIENT } from '@app/common';
-import { RateLimitGuard } from './rate-limit.guard';
+import { RateLimitGuard } from '../../src/guards/rate-limit.guard';
 import { ApiKeyType } from '@app/database';
-import { AuthenticatedClient } from '../modules/auth/client-auth.service';
+import { AuthenticatedClient } from '../../src/modules/auth/client-auth.service';
 
 function makeContext(clientAppId: string, rateLimitPerMinute: number): ExecutionContext {
   const client: AuthenticatedClient = {

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WorkerEmailController } from './worker-email.controller';
+import { WorkerEmailController } from '../src/worker-email.controller';
 
 describe('WorkerEmailController', () => {
   let workerEmailController: WorkerEmailController;

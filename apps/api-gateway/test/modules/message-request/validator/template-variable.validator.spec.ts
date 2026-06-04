@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { TemplateVariableValidator } from './template-variable.validator';
+import { TemplateVariableValidator } from '../../../../src/modules/message-request/validator/template-variable.validator';
 import { MessageTemplateVariableEntity, TemplateVariableDataType } from '@app/database';
 
 function makeVariable(

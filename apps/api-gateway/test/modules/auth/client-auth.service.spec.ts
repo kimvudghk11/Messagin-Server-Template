@@ -10,7 +10,7 @@ import {
   ClientAppStatus,
   ClientIpWhitelistEntity,
 } from '@app/database';
-import { ClientAuthService } from './client-auth.service';
+import { ClientAuthService } from '../../../src/modules/auth/client-auth.service';
 
 const PLAIN_SECRET = 'test-plain-secret-32-bytes-xxxx';
 const SECRET_HASH = createHash('sha256').update(PLAIN_SECRET).digest('hex');

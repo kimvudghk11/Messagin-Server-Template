@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { KafkaService } from './kafka.service';
+import { KafkaService } from '../src/kafka.service';
 
 const mockProducer = {
   connect: jest.fn(),

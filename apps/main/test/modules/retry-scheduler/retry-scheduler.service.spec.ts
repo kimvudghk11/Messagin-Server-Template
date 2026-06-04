@@ -17,7 +17,7 @@ import {
   RecipientType,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
-import { RetrySchedulerService } from './retry-scheduler.service';
+import { RetrySchedulerService } from '../../../src/modules/retry-scheduler/retry-scheduler.service';
 
 function makeDispatch(overrides: Partial<MessageDispatchEntity> = {}): MessageDispatchEntity {
   return {

@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ApiKeyStatus, ApiKeyType, ClientApiKeyEntity, ClientAppEntity, ClientAppStatus } from '@app/database';
 import { makeHttpExecutionContext } from '@app/common/testing';
-import { AdminAuthGuard } from './admin-auth.guard';
+import { AdminAuthGuard } from '../../src/guards/admin-auth.guard';
 
 const PLAIN_SECRET = 'admin-plain-secret-32-bytes-xxx';
 const SECRET_HASH = createHash('sha256').update(PLAIN_SECRET).digest('hex');

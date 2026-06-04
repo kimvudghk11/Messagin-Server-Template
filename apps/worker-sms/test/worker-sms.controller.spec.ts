@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WorkerSmsController } from './worker-sms.controller';
+import { WorkerSmsController } from '../src/worker-sms.controller';
 
 describe('WorkerSmsController', () => {
   let workerSmsController: WorkerSmsController;

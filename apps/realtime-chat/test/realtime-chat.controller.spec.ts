@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RealtimeChatController } from './realtime-chat.controller';
-import { RealtimeChatService } from './realtime-chat.service';
-import { ChatRoomService } from './chat-room.service';
+import { RealtimeChatController } from '../src/realtime-chat.controller';
+import { RealtimeChatService } from '../src/realtime-chat.service';
+import { ChatRoomService } from '../src/chat-room.service';
 
 describe('RealtimeChatController', () => {
   let controller: RealtimeChatController;
