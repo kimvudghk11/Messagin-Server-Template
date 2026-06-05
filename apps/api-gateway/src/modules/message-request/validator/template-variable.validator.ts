@@ -1,5 +1,6 @@
 import { MessageTemplateVariableEntity, TemplateVariableDataType } from '@app/database';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AppException, ErrorCode } from '@app/common';
 
 @Injectable()
 export class TemplateVariableValidator {
@@ -10,7 +11,7 @@ export class TemplateVariableValidator {
     for (const variable of templateVariables) {
       const value = values[variable.variableKey];
       if (variable.isRequired && (value === undefined || value === null)) {
-        throw new BadRequestException(`Missing required variable: ${variable.variableKey}`);
+        throw new AppException(ErrorCode.MSG_INVALID_VARIABLES, 400);
       }
 
       if (value === undefined || value === null) {
@@ -18,7 +19,7 @@ export class TemplateVariableValidator {
       }
 
       if (!this.isMatched(variable.dataType, value)) {
-        throw new BadRequestException(`Invalid variable type: ${variable.variableKey}`);
+        throw new AppException(ErrorCode.MSG_INVALID_VARIABLES, 400);
       }
     }
   }

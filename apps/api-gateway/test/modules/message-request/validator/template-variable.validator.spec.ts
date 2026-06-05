@@ -1,6 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
 import { TemplateVariableValidator } from '../../../../src/modules/message-request/validator/template-variable.validator';
 import { MessageTemplateVariableEntity, TemplateVariableDataType } from '@app/database';
+import { AppException, ErrorCode } from '@app/common';
 
 function makeVariable(
   variableKey: string,
@@ -20,6 +20,15 @@ function makeVariable(
   } as MessageTemplateVariableEntity;
 }
 
+function catchSync(fn: () => void): unknown {
+  try {
+    fn();
+    return undefined;
+  } catch (e) {
+    return e;
+  }
+}
+
 describe('TemplateVariableValidator', () => {
   let validator: TemplateVariableValidator;
 
@@ -28,15 +37,18 @@ describe('TemplateVariableValidator', () => {
   });
 
   describe('required variable presence', () => {
-    it('throws when required variable is missing', () => {
+    it('throws MSG_INVALID_VARIABLES when required variable is missing', () => {
       const vars = [makeVariable('name', TemplateVariableDataType.STRING, true)];
-      expect(() => validator.validate(vars, {})).toThrow(BadRequestException);
-      expect(() => validator.validate(vars, {})).toThrow('Missing required variable: name');
+      const err = catchSync(() => validator.validate(vars, {}));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
-    it('throws when required variable is null', () => {
+    it('throws MSG_INVALID_VARIABLES when required variable is null', () => {
       const vars = [makeVariable('name', TemplateVariableDataType.STRING, true)];
-      expect(() => validator.validate(vars, { name: null })).toThrow(BadRequestException);
+      const err = catchSync(() => validator.validate(vars, { name: null }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
     it('passes when optional variable is absent', () => {
@@ -51,9 +63,11 @@ describe('TemplateVariableValidator', () => {
       expect(() => validator.validate(vars, { name: 'hello' })).not.toThrow();
     });
 
-    it('throws STRING with number value', () => {
+    it('throws MSG_INVALID_VARIABLES with number for STRING variable', () => {
       const vars = [makeVariable('name', TemplateVariableDataType.STRING, true)];
-      expect(() => validator.validate(vars, { name: 123 })).toThrow('Invalid variable type: name');
+      const err = catchSync(() => validator.validate(vars, { name: 123 }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
     it('passes NUMBER with finite number', () => {
@@ -61,14 +75,18 @@ describe('TemplateVariableValidator', () => {
       expect(() => validator.validate(vars, { amount: 42 })).not.toThrow();
     });
 
-    it('throws NUMBER with Infinity', () => {
+    it('throws MSG_INVALID_VARIABLES with Infinity for NUMBER variable', () => {
       const vars = [makeVariable('amount', TemplateVariableDataType.NUMBER, true)];
-      expect(() => validator.validate(vars, { amount: Infinity })).toThrow('Invalid variable type: amount');
+      const err = catchSync(() => validator.validate(vars, { amount: Infinity }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
-    it('throws NUMBER with string', () => {
+    it('throws MSG_INVALID_VARIABLES with string for NUMBER variable', () => {
       const vars = [makeVariable('amount', TemplateVariableDataType.NUMBER, true)];
-      expect(() => validator.validate(vars, { amount: '42' })).toThrow('Invalid variable type: amount');
+      const err = catchSync(() => validator.validate(vars, { amount: '42' }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
     it('passes BOOLEAN with boolean value', () => {
@@ -76,9 +94,11 @@ describe('TemplateVariableValidator', () => {
       expect(() => validator.validate(vars, { flag: false })).not.toThrow();
     });
 
-    it('throws BOOLEAN with string "true"', () => {
+    it('throws MSG_INVALID_VARIABLES with string "true" for BOOLEAN variable', () => {
       const vars = [makeVariable('flag', TemplateVariableDataType.BOOLEAN, true)];
-      expect(() => validator.validate(vars, { flag: 'true' })).toThrow('Invalid variable type: flag');
+      const err = catchSync(() => validator.validate(vars, { flag: 'true' }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
     it('passes DATE with string value', () => {
@@ -91,9 +111,11 @@ describe('TemplateVariableValidator', () => {
       expect(() => validator.validate(vars, { meta: { key: 'value' } })).not.toThrow();
     });
 
-    it('throws OBJECT with array', () => {
+    it('throws MSG_INVALID_VARIABLES with array for OBJECT variable', () => {
       const vars = [makeVariable('meta', TemplateVariableDataType.OBJECT, true)];
-      expect(() => validator.validate(vars, { meta: [1, 2, 3] })).toThrow('Invalid variable type: meta');
+      const err = catchSync(() => validator.validate(vars, { meta: [1, 2, 3] }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
     it('passes ARRAY with array value', () => {
@@ -101,19 +123,23 @@ describe('TemplateVariableValidator', () => {
       expect(() => validator.validate(vars, { items: [1, 2, 3] })).not.toThrow();
     });
 
-    it('throws ARRAY with plain object', () => {
+    it('throws MSG_INVALID_VARIABLES with plain object for ARRAY variable', () => {
       const vars = [makeVariable('items', TemplateVariableDataType.ARRAY, true)];
-      expect(() => validator.validate(vars, { items: {} })).toThrow('Invalid variable type: items');
+      const err = catchSync(() => validator.validate(vars, { items: {} }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
   });
 
   describe('multiple variables', () => {
-    it('validates all variables and throws on first violation', () => {
+    it('throws MSG_INVALID_VARIABLES on first violation', () => {
       const vars = [
         makeVariable('name', TemplateVariableDataType.STRING, true),
         makeVariable('amount', TemplateVariableDataType.NUMBER, true),
       ];
-      expect(() => validator.validate(vars, { name: 'test', amount: 'wrong' })).toThrow('Invalid variable type: amount');
+      const err = catchSync(() => validator.validate(vars, { name: 'test', amount: 'wrong' }));
+      expect(err).toBeInstanceOf(AppException);
+      expect(err).toMatchObject({ errorCode: ErrorCode.MSG_INVALID_VARIABLES });
     });
 
     it('passes when all variables are valid', () => {
