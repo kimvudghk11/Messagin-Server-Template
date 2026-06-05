@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UnauthorizedException } from '@nestjs/common';
 import {
   ApiKeyStatus,
   ApiKeyType,
@@ -10,6 +9,7 @@ import {
   ClientAppStatus,
   ClientIpWhitelistEntity,
 } from '@app/database';
+import { AppException, ErrorCode } from '@app/common';
 import { ClientAuthService } from '../../../src/modules/auth/client-auth.service';
 
 const PLAIN_SECRET = 'test-plain-secret-32-bytes-xxxx';
@@ -112,41 +112,41 @@ describe('ClientAuthService', () => {
     expect(apiKeyRepo.save).toHaveBeenCalledWith(expect.objectContaining({ lastUsedAt: expect.any(Date) }));
   });
 
-  it('throws when x-api-key header is missing', async () => {
-    await expect(service.authenticate(makeRequest(undefined, PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Missing API key headers'),
-    );
+  it('throws AUTH_MISSING_HEADERS when x-api-key header is missing', async () => {
+    await expect(service.authenticate(makeRequest(undefined, PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_MISSING_HEADERS,
+    });
   });
 
-  it('throws when x-api-secret header is missing', async () => {
-    await expect(service.authenticate(makeRequest('mst_test_abc123', undefined))).rejects.toThrow(
-      new UnauthorizedException('Missing API key headers'),
-    );
+  it('throws AUTH_MISSING_HEADERS when x-api-secret header is missing', async () => {
+    await expect(service.authenticate(makeRequest('mst_test_abc123', undefined))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_MISSING_HEADERS,
+    });
   });
 
-  it('throws when API key not found', async () => {
+  it('throws AUTH_INVALID_API_KEY when API key not found', async () => {
     apiKeyRepo.findOne.mockResolvedValue(null);
 
-    await expect(service.authenticate(makeRequest('unknown', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Invalid API key'),
-    );
+    await expect(service.authenticate(makeRequest('unknown', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_INVALID_API_KEY,
+    });
   });
 
-  it('throws when API key is revoked', async () => {
+  it('throws AUTH_API_KEY_INACTIVE when API key is revoked', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey({ status: ApiKeyStatus.REVOKED }));
 
-    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('API key is not active'),
-    );
+    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_API_KEY_INACTIVE,
+    });
   });
 
-  it('throws when API key is expired', async () => {
+  it('throws AUTH_API_KEY_EXPIRED when API key is expired', async () => {
     const expiredAt = new Date(Date.now() - 1000);
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey({ expiredAt }));
 
-    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('API key expired'),
-    );
+    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_API_KEY_EXPIRED,
+    });
   });
 
   it('passes when API key has future expiry', async () => {
@@ -158,30 +158,30 @@ describe('ClientAuthService', () => {
     await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).resolves.toBeDefined();
   });
 
-  it('throws when secret hash does not match', async () => {
+  it('throws AUTH_INVALID_SECRET when secret hash does not match', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
 
-    await expect(service.authenticate(makeRequest('mst_test_abc123', 'wrong-secret'))).rejects.toThrow(
-      new UnauthorizedException('Invalid API secret'),
-    );
+    await expect(service.authenticate(makeRequest('mst_test_abc123', 'wrong-secret'))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_INVALID_SECRET,
+    });
   });
 
-  it('throws when client app is inactive', async () => {
+  it('throws AUTH_CLIENT_APP_INACTIVE when client app is inactive', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
     appRepo.findOne.mockResolvedValue(makeClientApp({ status: ClientAppStatus.INACTIVE }));
 
-    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Client app is not active'),
-    );
+    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_CLIENT_APP_INACTIVE,
+    });
   });
 
-  it('throws when client app is not found', async () => {
+  it('throws AUTH_CLIENT_APP_INACTIVE when client app is not found', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
     appRepo.findOne.mockResolvedValue(null);
 
-    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Client app is not active'),
-    );
+    await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_CLIENT_APP_INACTIVE,
+    });
   });
 
   describe('IP whitelist', () => {
@@ -194,7 +194,7 @@ describe('ClientAuthService', () => {
       expect(ipWhitelistRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
-    it('throws when IP not in whitelist', async () => {
+    it('throws AUTH_IP_NOT_ALLOWED when IP not in whitelist', async () => {
       apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
       appRepo.findOne.mockResolvedValue(makeClientApp({ isIpWhitelistEnabled: true }));
 
@@ -205,9 +205,9 @@ describe('ClientAuthService', () => {
       };
       ipWhitelistRepo.createQueryBuilder.mockReturnValue(qb);
 
-      await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET, '9.9.9.9'))).rejects.toThrow(
-        new UnauthorizedException('IP address not allowed'),
-      );
+      await expect(service.authenticate(makeRequest('mst_test_abc123', PLAIN_SECRET, '9.9.9.9'))).rejects.toMatchObject({
+        errorCode: ErrorCode.AUTH_IP_NOT_ALLOWED,
+      });
     });
 
     it('passes when IP matches whitelist entry', async () => {
@@ -250,7 +250,6 @@ describe('ClientAuthService', () => {
 
       await service.authenticate(request);
 
-      // Should use first entry from X-Forwarded-For (203.0.113.5), not socket IP
       expect(qb.andWhere).toHaveBeenCalledWith(':ip::inet << wl.ip_address', { ip: '203.0.113.5' });
     });
   });

@@ -16,8 +16,8 @@ import {
 } from '@app/database';
 import { MessageSendEvent } from '@app/contracts';
 import { KafkaService } from '@app/kafka';
-import { PayloadCryptoService } from '@app/common';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { AppException, ErrorCode, PayloadCryptoService } from '@app/common';
+import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { AuthenticatedClient } from '../auth/client-auth.service';
@@ -144,9 +144,7 @@ export class MessageRequestService {
       await this.messageOutboxRepository.save(outboxEntry);
     } catch {
       // Outbox relay will pick this up and retry
-      throw new InternalServerErrorException(
-        '메시지 요청 저장은 완료되었지만 Kafka 발행에 실패했습니다. 같은 requestId로 재시도하세요.',
-      );
+      throw new AppException(ErrorCode.MSG_KAFKA_PUBLISH_FAILED, 503);
     }
 
     savedRequest.status = MessageRequestStatus.QUEUED;
@@ -182,7 +180,7 @@ export class MessageRequestService {
     });
 
     if (!payload) {
-      throw new InternalServerErrorException('기존 요청의 payload를 찾을 수 없습니다.');
+      throw new AppException(ErrorCode.MSG_PAYLOAD_NOT_FOUND, 500);
     }
 
     const metadata = this.asRecord(existingRequest.metadata);
@@ -194,7 +192,7 @@ export class MessageRequestService {
     });
 
     if (!channel || !receiver || !recipient) {
-      throw new InternalServerErrorException('기존 요청의 channel/receiver/recipient 정보가 올바르지 않습니다.');
+      throw new AppException(ErrorCode.MSG_REQUEST_DATA_MISSING, 500);
     }
 
     const event: MessageSendEvent = {
@@ -216,9 +214,7 @@ export class MessageRequestService {
     try {
       await this.kafkaService.publishMessageSend(event);
     } catch {
-      throw new InternalServerErrorException(
-        '메시지 요청 저장은 완료되었지만 Kafka 발행에 실패했습니다. 같은 requestId로 재시도하세요.',
-      );
+      throw new AppException(ErrorCode.MSG_KAFKA_PUBLISH_FAILED, 503);
     }
 
     existingRequest.status = MessageRequestStatus.QUEUED;

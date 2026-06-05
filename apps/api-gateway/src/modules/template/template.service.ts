@@ -4,7 +4,8 @@ import {
   MessageTemplateVariableEntity,
   TemplateAccessScope,
 } from '@app/database';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AppException, ErrorCode } from '@app/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -25,7 +26,7 @@ export class TemplateService {
     });
 
     if (!template) {
-      throw new NotFoundException('Template not found');
+      throw new AppException(ErrorCode.MSG_TEMPLATE_NOT_FOUND, 404);
     }
 
     await this.assertTemplateAccessible(template.id, template.accessScope, clientAppId);
@@ -87,7 +88,7 @@ export class TemplateService {
     });
 
     if (!access) {
-      throw new NotFoundException('Template not found');
+      throw new AppException(ErrorCode.MSG_TEMPLATE_NOT_FOUND, 404);
     }
   }
 }

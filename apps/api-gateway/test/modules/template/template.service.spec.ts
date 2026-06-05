@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { AppException, ErrorCode } from '@app/common';
 import {
   ClientTemplateAccessEntity,
   MessageTemplateEntity,
@@ -86,10 +86,12 @@ describe('TemplateService', () => {
       expect(accessRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it('throws NotFoundException when template not found', async () => {
+    it('throws MSG_TEMPLATE_NOT_FOUND when template not found', async () => {
       templateRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.getTemplateByCode('MISSING', 'app-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.getTemplateByCode('MISSING', 'app-uuid')).rejects.toMatchObject({
+        errorCode: ErrorCode.MSG_TEMPLATE_NOT_FOUND,
+      });
     });
 
     it('returns PRIVATE template when client has access', async () => {
@@ -102,20 +104,24 @@ describe('TemplateService', () => {
       expect(result).toBe(template);
     });
 
-    it('throws NotFoundException for PRIVATE template without access', async () => {
+    it('throws MSG_TEMPLATE_NOT_FOUND for PRIVATE template without access', async () => {
       const template = makeTemplate({ accessScope: TemplateAccessScope.PRIVATE });
       templateRepo.findOne.mockResolvedValue(template);
       accessRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.getTemplateByCode('WELCOME', 'app-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.getTemplateByCode('WELCOME', 'app-uuid')).rejects.toMatchObject({
+        errorCode: ErrorCode.MSG_TEMPLATE_NOT_FOUND,
+      });
     });
 
-    it('throws NotFoundException for RESTRICTED template without access', async () => {
+    it('throws MSG_TEMPLATE_NOT_FOUND for RESTRICTED template without access', async () => {
       const template = makeTemplate({ accessScope: TemplateAccessScope.RESTRICTED });
       templateRepo.findOne.mockResolvedValue(template);
       accessRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.getTemplateByCode('WELCOME', 'app-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.getTemplateByCode('WELCOME', 'app-uuid')).rejects.toMatchObject({
+        errorCode: ErrorCode.MSG_TEMPLATE_NOT_FOUND,
+      });
     });
   });
 

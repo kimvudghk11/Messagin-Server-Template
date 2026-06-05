@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { InternalServerErrorException } from '@nestjs/common';
+import { AppException, ErrorCode, PayloadCryptoService } from '@app/common';
 import {
   ApiKeyType,
   ChannelType,
@@ -14,7 +14,6 @@ import {
   RecipientStatus,
 } from '@app/database';
 import { KafkaService } from '@app/kafka';
-import { PayloadCryptoService } from '@app/common';
 import { MessageRequestService } from '../../../src/modules/message-request/message-request.service';
 import { TemplateService } from '../../../src/modules/template/template.service';
 import { TemplateVariableValidator } from '../../../src/modules/message-request/validator/template-variable.validator';
@@ -216,10 +215,12 @@ describe('MessageRequestService', () => {
       );
     });
 
-    it('throws InternalServerErrorException when Kafka publish fails', async () => {
+    it('throws MSG_KAFKA_PUBLISH_FAILED when Kafka publish fails', async () => {
       kafkaService.publishMessageSend.mockRejectedValue(new Error('Kafka down'));
 
-      await expect(service.send(auth, dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.send(auth, dto)).rejects.toMatchObject({
+        errorCode: ErrorCode.MSG_KAFKA_PUBLISH_FAILED,
+      });
     });
 
     it('does not call second requestRepo.save (QUEUED update) when Kafka fails', async () => {
@@ -265,13 +266,15 @@ describe('MessageRequestService', () => {
       expect(result.status).toBe(MessageRequestStatus.QUEUED);
     });
 
-    it('throws when payload is missing during retry', async () => {
+    it('throws MSG_PAYLOAD_NOT_FOUND when payload is missing during retry', async () => {
       const validatedRequest = makeSavedRequest({ status: MessageRequestStatus.VALIDATED });
 
       requestRepo.findOne.mockResolvedValue(validatedRequest);
       payloadRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.send(auth, dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.send(auth, dto)).rejects.toMatchObject({
+        errorCode: ErrorCode.MSG_PAYLOAD_NOT_FOUND,
+      });
     });
   });
 

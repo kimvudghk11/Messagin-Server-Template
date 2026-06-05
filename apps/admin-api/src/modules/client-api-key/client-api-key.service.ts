@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AppException, ErrorCode } from '@app/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   ApiKeyStatus,
@@ -22,7 +23,7 @@ export class ClientApiKeyService {
   async create(clientAppId: string, dto: CreateClientApiKeyDto) {
     const clientApp = await this.clientAppRepository.findOne({ where: { id: clientAppId } });
     if (!clientApp) {
-      throw new NotFoundException('Client app not found');
+      throw new AppException(ErrorCode.CLIENT_APP_NOT_FOUND, 404);
     }
 
     const environment = dto.environment ?? ApiKeyEnvironment.TEST;
