@@ -1,13 +1,11 @@
 import {
   CanActivate,
   ExecutionContext,
-  HttpException,
-  HttpStatus,
   Inject,
   Injectable,
 } from '@nestjs/common';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@app/common';
+import { AppException, ErrorCode, REDIS_CLIENT } from '@app/common';
 import { RequestWithClient } from './client-auth.guard';
 
 @Injectable()
@@ -32,10 +30,7 @@ export class RateLimitGuard implements CanActivate {
     const count = (results?.[2]?.[1] as number | null) ?? 0;
 
     if (count > rateLimitPerMinute) {
-      throw new HttpException(
-        `Rate limit exceeded: max ${rateLimitPerMinute} requests per minute`,
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+      throw new AppException(ErrorCode.RATE_LIMIT_EXCEEDED, 429);
     }
 
     return true;

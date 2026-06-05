@@ -1,8 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientPermissionEntity, ClientPermissionType } from '@app/database';
+import { AppException, ErrorCode } from '@app/common';
 import { PERMISSION_KEY } from '../decorators/require-permission.decorator';
 import { RequestWithClient } from './client-auth.guard';
 
@@ -28,7 +29,7 @@ export class ClientPermissionGuard implements CanActivate {
     });
 
     if (!permission) {
-      throw new ForbiddenException(`Permission denied: ${required}`);
+      throw new AppException(ErrorCode.PERM_INSUFFICIENT, 403);
     }
 
     return true;

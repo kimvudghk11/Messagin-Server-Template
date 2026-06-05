@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ApiKeyType, ClientPermissionEntity, ClientPermissionType } from '@app/database';
 import { makeHttpExecutionContext } from '@app/common/testing';
+import { AppException, ErrorCode } from '@app/common';
 import { ClientPermissionGuard } from '../../src/guards/client-permission.guard';
 import { PERMISSION_KEY } from '../../src/decorators/require-permission.decorator';
 import { AuthenticatedClient } from '../../src/modules/auth/client-auth.service';
@@ -61,11 +62,13 @@ describe('ClientPermissionGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('throws ForbiddenException when permission not found', async () => {
+  it('throws PERM_INSUFFICIENT when permission not found', async () => {
     permRepo.findOne.mockResolvedValue(null);
     const ctx = makeContext('app-1', ClientPermissionType.SEND_MESSAGE);
 
-    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toMatchObject({
+      errorCode: ErrorCode.PERM_INSUFFICIENT,
+    });
   });
 
   it('queries with correct clientAppId and permissionType', async () => {

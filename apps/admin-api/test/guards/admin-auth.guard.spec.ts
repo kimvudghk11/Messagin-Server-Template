@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { ApiKeyStatus, ApiKeyType, ClientApiKeyEntity, ClientAppEntity, ClientAppStatus } from '@app/database';
 import { makeHttpExecutionContext } from '@app/common/testing';
+import { AppException, ErrorCode } from '@app/common';
 import { AdminAuthGuard } from '../../src/guards/admin-auth.guard';
 
 const PLAIN_SECRET = 'admin-plain-secret-32-bytes-xxx';
@@ -92,57 +93,57 @@ describe('AdminAuthGuard', () => {
     );
   });
 
-  it('throws when x-api-key header is missing', async () => {
-    await expect(guard.canActivate(makeContext(undefined, PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Missing API key headers'),
-    );
+  it('throws AUTH_MISSING_HEADERS when x-api-key header is missing', async () => {
+    await expect(guard.canActivate(makeContext(undefined, PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_MISSING_HEADERS,
+    });
   });
 
-  it('throws when x-api-secret header is missing', async () => {
-    await expect(guard.canActivate(makeContext('mst_live_admin123', undefined))).rejects.toThrow(
-      new UnauthorizedException('Missing API key headers'),
-    );
+  it('throws AUTH_MISSING_HEADERS when x-api-secret header is missing', async () => {
+    await expect(guard.canActivate(makeContext('mst_live_admin123', undefined))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_MISSING_HEADERS,
+    });
   });
 
-  it('throws when key not found', async () => {
+  it('throws AUTH_INVALID_API_KEY when key not found', async () => {
     apiKeyRepo.findOne.mockResolvedValue(null);
 
-    await expect(guard.canActivate(makeContext('unknown', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Invalid API key'),
-    );
+    await expect(guard.canActivate(makeContext('unknown', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_INVALID_API_KEY,
+    });
   });
 
-  it('throws when key type is SERVER (not ADMIN)', async () => {
+  it('throws AUTH_ADMIN_REQUIRED when key type is SERVER', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey({ keyType: ApiKeyType.SERVER }));
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Admin access required'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_ADMIN_REQUIRED,
+    });
   });
 
-  it('throws when key type is WORKER (not ADMIN)', async () => {
+  it('throws AUTH_ADMIN_REQUIRED when key type is WORKER', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey({ keyType: ApiKeyType.WORKER }));
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Admin access required'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_ADMIN_REQUIRED,
+    });
   });
 
-  it('throws when key is revoked', async () => {
+  it('throws AUTH_API_KEY_INACTIVE when key is revoked', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey({ status: ApiKeyStatus.REVOKED }));
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('API key is not active'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_API_KEY_INACTIVE,
+    });
   });
 
-  it('throws when key is expired', async () => {
+  it('throws AUTH_API_KEY_EXPIRED when key is expired', async () => {
     const expiredAt = new Date(Date.now() - 1000);
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey({ expiredAt }));
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('API key expired'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_API_KEY_EXPIRED,
+    });
   });
 
   it('passes when key has future expiry', async () => {
@@ -154,30 +155,30 @@ describe('AdminAuthGuard', () => {
     await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).resolves.toBe(true);
   });
 
-  it('throws when secret is wrong', async () => {
+  it('throws AUTH_INVALID_SECRET when secret is wrong', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', 'wrong-secret'))).rejects.toThrow(
-      new UnauthorizedException('Invalid API secret'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', 'wrong-secret'))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_INVALID_SECRET,
+    });
   });
 
-  it('throws when client app is inactive', async () => {
+  it('throws AUTH_CLIENT_APP_INACTIVE when client app is inactive', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
     appRepo.findOne.mockResolvedValue(makeClientApp({ status: ClientAppStatus.INACTIVE }));
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Client app is not active'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_CLIENT_APP_INACTIVE,
+    });
   });
 
-  it('throws when client app is not found', async () => {
+  it('throws AUTH_CLIENT_APP_INACTIVE when client app is not found', async () => {
     apiKeyRepo.findOne.mockResolvedValue(makeApiKey());
     appRepo.findOne.mockResolvedValue(null);
 
-    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toThrow(
-      new UnauthorizedException('Client app is not active'),
-    );
+    await expect(guard.canActivate(makeContext('mst_live_admin123', PLAIN_SECRET))).rejects.toMatchObject({
+      errorCode: ErrorCode.AUTH_CLIENT_APP_INACTIVE,
+    });
   });
 
   it('sets adminKeyId on request after successful auth', async () => {

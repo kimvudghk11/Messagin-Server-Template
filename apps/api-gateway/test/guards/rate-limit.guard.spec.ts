@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { makeHttpExecutionContext } from '@app/common/testing';
-import { REDIS_CLIENT } from '@app/common';
+import { AppException, ErrorCode, REDIS_CLIENT } from '@app/common';
 import { RateLimitGuard } from '../../src/guards/rate-limit.guard';
 import { ApiKeyType } from '@app/database';
 import { AuthenticatedClient } from '../../src/modules/auth/client-auth.service';
@@ -50,11 +50,11 @@ describe('RateLimitGuard', () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 
-  it('throws TooManyRequestsException when count exceeds limit', async () => {
+  it('throws RATE_LIMIT_EXCEEDED when count exceeds limit', async () => {
     const guard = await buildGuard(4);
     const ctx = makeContext('app-2', 3);
     await expect(guard.canActivate(ctx)).rejects.toMatchObject({
-      status: HttpStatus.TOO_MANY_REQUESTS,
+      errorCode: ErrorCode.RATE_LIMIT_EXCEEDED,
     });
   });
 
@@ -64,9 +64,9 @@ describe('RateLimitGuard', () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 
-  it('throws when count is one over the limit', async () => {
+  it('throws RATE_LIMIT_EXCEEDED when count is one over the limit', async () => {
     const guard = await buildGuard(4);
     const ctx = makeContext('app-4', 3);
-    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(HttpException);
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(AppException);
   });
 });
