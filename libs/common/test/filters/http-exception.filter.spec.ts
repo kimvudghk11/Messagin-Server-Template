@@ -1,6 +1,9 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
 import { HttpExceptionFilter } from '../../src/filters/http-exception.filter';
+import { AppException } from '../../src/errors/app.exception';
+import { ErrorCode } from '../../src/errors/error-code.enum';
+import { ERROR_MESSAGES } from '../../src/errors/error-messages';
 
 function makeHost(method = 'GET', url = '/test'): {
   host: ArgumentsHost;
@@ -46,7 +49,7 @@ describe('HttpExceptionFilter', () => {
       expect(json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          statusCode: 400,
+          errorCode: null,
           message: 'Bad request',
           path: '/test',
         }),
@@ -95,8 +98,43 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
-  describe('Generic Error (5xx)', () => {
-    it('returns 500 and hides actual error message', () => {
+  describe('AppException', () => {
+    it('includes errorCode in response', () => {
+      const { host, json } = makeHost();
+      filter.catch(new AppException(ErrorCode.AUTH_INVALID_API_KEY, 401), host);
+
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          errorCode: ErrorCode.AUTH_INVALID_API_KEY,
+          message: ERROR_MESSAGES[ErrorCode.AUTH_INVALID_API_KEY],
+        }),
+      );
+    });
+
+    it('shows Korean message even for 5xx AppException', () => {
+      const { host, status, json } = makeHost();
+      filter.catch(new AppException(ErrorCode.MSG_KAFKA_PUBLISH_FAILED, 503), host);
+
+      expect(status).toHaveBeenCalledWith(503);
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorCode: ErrorCode.MSG_KAFKA_PUBLISH_FAILED,
+          message: ERROR_MESSAGES[ErrorCode.MSG_KAFKA_PUBLISH_FAILED],
+        }),
+      );
+    });
+
+    it('logs at error level for 5xx AppException', () => {
+      const { host } = makeHost();
+      filter.catch(new AppException(ErrorCode.MSG_KAFKA_PUBLISH_FAILED, 503), host);
+
+      expect(errorSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Generic Error — SYS_001', () => {
+    it('returns 500 with SYS_001 errorCode and Korean message', () => {
       const { host, status, json } = makeHost();
       filter.catch(new Error('Database connection failed'), host);
 
@@ -104,8 +142,8 @@ describe('HttpExceptionFilter', () => {
       expect(json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          statusCode: 500,
-          message: 'Internal server error',
+          errorCode: ErrorCode.SYS_INTERNAL_ERROR,
+          message: ERROR_MESSAGES[ErrorCode.SYS_INTERNAL_ERROR],
         }),
       );
     });
@@ -124,7 +162,10 @@ describe('HttpExceptionFilter', () => {
 
       expect(status).toHaveBeenCalledWith(500);
       expect(json).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 500, message: 'Internal server error' }),
+        expect.objectContaining({
+          errorCode: ErrorCode.SYS_INTERNAL_ERROR,
+          message: ERROR_MESSAGES[ErrorCode.SYS_INTERNAL_ERROR],
+        }),
       );
     });
   });
