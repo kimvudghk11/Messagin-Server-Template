@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { MessageDlqEvent } from '@app/contracts';
 import { KafkaService } from '../src/kafka.service';
 
 const mockProducer = {
@@ -26,6 +27,7 @@ describe('KafkaService', () => {
           KAFKA_BROKERS: 'localhost:9092',
           KAFKA_CLIENT_ID: 'test-client',
           KAFKA_TOPIC_MESSAGE_SEND: 'message.send',
+          KAFKA_TOPIC_MESSAGE_DLQ: 'message.dlq',
         };
         return map[key] ?? defaultVal ?? '';
       }),
@@ -128,6 +130,55 @@ describe('KafkaService', () => {
         expect.objectContaining({
           messages: expect.arrayContaining([
             expect.objectContaining({ key: 'my-request-id' }),
+          ]),
+        }),
+      );
+    });
+  });
+
+  describe('publishDlq', () => {
+    function makeDlqEvent(): MessageDlqEvent {
+      return {
+        messageRequestId: 'req-uuid',
+        requestId: 'req-001',
+        recipientId: 'rec-uuid',
+        clientAppId: 'app-uuid',
+        templateCode: 'WELCOME',
+        channel: 'EMAIL',
+        receiver: {},
+        variables: {},
+        priority: 'NORMAL',
+        callbackUrl: null,
+        requestedAt: new Date().toISOString(),
+        dispatchId: 'dispatch-uuid',
+        errorCode: 'EMAIL_SEND_FAILED',
+        errorMessage: 'SMTP connection refused',
+        retryCount: 3,
+        failedAt: new Date().toISOString(),
+      };
+    }
+
+    it('sends to KAFKA_TOPIC_MESSAGE_DLQ topic', async () => {
+      await service.onModuleInit();
+      mockProducer.send.mockResolvedValue([]);
+
+      await service.publishDlq(makeDlqEvent());
+
+      expect(mockProducer.send).toHaveBeenCalledWith(
+        expect.objectContaining({ topic: 'message.dlq' }),
+      );
+    });
+
+    it('uses requestId as the partition key', async () => {
+      await service.onModuleInit();
+      mockProducer.send.mockResolvedValue([]);
+
+      await service.publishDlq(makeDlqEvent());
+
+      expect(mockProducer.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({ key: 'req-001' }),
           ]),
         }),
       );

@@ -1,4 +1,4 @@
-import { MessageSendEvent } from '@app/contracts';
+import { MessageDlqEvent, MessageSendEvent } from '@app/contracts';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Kafka, Producer } from 'kafkajs';
@@ -42,6 +42,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   async publishMessageSend(event: MessageSendEvent): Promise<void> {
     const topic = this.configService.get<string>('KAFKA_TOPIC_MESSAGE_SEND', 'message.send');
 
+    await this.publish(topic, event.requestId, event);
+  }
+
+  async publishDlq(event: MessageDlqEvent): Promise<void> {
+    const topic = this.configService.get<string>('KAFKA_TOPIC_MESSAGE_DLQ', 'message.dlq');
     await this.publish(topic, event.requestId, event);
   }
 
