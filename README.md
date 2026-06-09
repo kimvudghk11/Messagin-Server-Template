@@ -337,3 +337,5 @@ WebSocket handshake 시 `x-api-key` / `x-api-secret` 헤더로 인증 (`WsAuthSe
 - [x] Admin 감사 로그 — `tb_admin_audit_log` 실제 기록
 - [ ] E2E / 통합 테스트 — 실제 DB + Kafka 연동 테스트
 - [ ] WebSocket 수평 확장 — Redis Pub/Sub Adapter (Socket.IO 멀티 인스턴스)
+
+<!-- last updated: 2026-06-09 -->
