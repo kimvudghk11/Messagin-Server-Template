@@ -7,6 +7,7 @@ import {
   AdminAuditLogEntity,
   ClientApiKeyEntity,
   ClientAppEntity,
+  MessageDlqEntity,
   createTypeOrmConfig,
 } from '@app/database';
 import { HttpMetricsInterceptor, MetricsModule } from '@app/common';
@@ -14,6 +15,7 @@ import { AdminApiController } from './admin-api.controller';
 import { AdminApiService } from './admin-api.service';
 import { AdminAuditLogModule } from './modules/audit-log/admin-audit-log.module';
 import { ClientApiKeyModule } from './modules/client-api-key/client-api-key.module';
+import { DlqModule } from './modules/dlq/dlq.module';
 
 @Module({
   imports: [
@@ -30,10 +32,11 @@ import { ClientApiKeyModule } from './modules/client-api-key/client-api-key.modu
     }),
     ClsModule.forRoot({ global: true, middleware: { mount: true } }),
     TypeOrmModule.forRoot(
-      createTypeOrmConfig([ClientAppEntity, ClientApiKeyEntity, AdminAuditLogEntity]),
+      createTypeOrmConfig([ClientAppEntity, ClientApiKeyEntity, AdminAuditLogEntity, MessageDlqEntity]),
     ),
     ClientApiKeyModule,
     AdminAuditLogModule,
+    DlqModule,
     MetricsModule,
   ],
   controllers: [AdminApiController],
