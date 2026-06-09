@@ -142,16 +142,16 @@ export class MessageRequestService {
       outboxEntry.status = OutboxStatus.PUBLISHED;
       outboxEntry.publishedAt = new Date();
       await this.messageOutboxRepository.save(outboxEntry);
+
+      savedRequest.status = MessageRequestStatus.QUEUED;
+      savedRequest.queuedAt = new Date();
+      await this.messageRequestRepository.save(savedRequest);
     } catch {
       // Outbox relay will pick this up and retry
       throw new AppException(ErrorCode.MSG_KAFKA_PUBLISH_FAILED, 503);
     }
 
-    savedRequest.status = MessageRequestStatus.QUEUED;
-    savedRequest.queuedAt = new Date();
-    const queuedRequest = await this.messageRequestRepository.save(savedRequest);
-
-    return this.toResponse(queuedRequest, dto.channel);
+    return this.toResponse(savedRequest, dto.channel);
   }
 
   private toResponse(messageRequest: MessageRequestEntity, channel?: string) {
@@ -203,9 +203,7 @@ export class MessageRequestService {
       templateCode: existingRequest.templateCode ?? '',
       channel,
       receiver,
-      variables: payload.encryptionStatus === PayloadEncryptionStatus.ENCRYPTED
-        ? this.payloadCryptoService.decrypt(payload.payloadJson)
-        : payload.payloadJson,
+      variables: payload.payloadJson,
       priority: existingRequest.priority,
       callbackUrl: existingRequest.callbackUrl,
       requestedAt: existingRequest.requestedAt.toISOString(),
