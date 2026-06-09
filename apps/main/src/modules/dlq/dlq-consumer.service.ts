@@ -59,6 +59,10 @@ export class DlqConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async saveDlqEntry(event: MessageDlqEvent): Promise<void> {
+    // Strip variables before persisting — the worker already decrypted them,
+    // so storing here would write plaintext PII to DB. The encrypted source
+    // remains in tb_message_payload for re-delivery if needed.
+    const { variables: _redacted, ...safeEvent } = event as unknown as Record<string, unknown>;
     const entry = this.dlqRepository.create({
       messageRequestId: event.messageRequestId,
       dispatchId: event.dispatchId,
@@ -67,7 +71,7 @@ export class DlqConsumerService implements OnModuleInit, OnModuleDestroy {
       errorCode: event.errorCode,
       errorMessage: event.errorMessage,
       retryCount: event.retryCount,
-      originalEvent: event as unknown as Record<string, unknown>,
+      originalEvent: safeEvent,
       failedAt: new Date(event.failedAt),
     });
     await this.dlqRepository.save(entry);
