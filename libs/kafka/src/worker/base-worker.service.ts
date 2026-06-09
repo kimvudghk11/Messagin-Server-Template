@@ -9,8 +9,9 @@ import {
   MessageRequestStatus,
   ProviderType,
 } from '@app/database';
-import { MessageSendEvent } from '@app/contracts';
+import { MessageDlqEvent, MessageSendEvent } from '@app/contracts';
 import { PayloadCryptoService } from '@app/common';
+import { KafkaService } from '../kafka.service';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -42,6 +43,7 @@ export abstract class BaseWorkerService implements OnModuleInit, OnModuleDestroy
     @InjectRepository(MessageDispatchLogEntity)
     protected readonly messageDispatchLogRepository: Repository<MessageDispatchLogEntity>,
     @Optional() private readonly payloadCryptoService?: PayloadCryptoService,
+    @Optional() private readonly kafkaService?: KafkaService,
   ) {
     this.logger = new Logger(this.constructor.name);
   }
@@ -177,6 +179,25 @@ export abstract class BaseWorkerService implements OnModuleInit, OnModuleDestroy
 
         messageRequest.status = MessageRequestStatus.FAILED;
         await this.messageRequestRepository.save(messageRequest);
+
+        if (this.kafkaService) {
+          const dlqEvent: MessageDlqEvent = {
+            ...event,
+            dispatchId: savedDispatch.id,
+            errorCode: this.errorCode,
+            errorMessage,
+            retryCount: savedDispatch.retryCount,
+            failedAt: (savedDispatch.failedAt as Date).toISOString(),
+          };
+          try {
+            await this.kafkaService.publishDlq(dlqEvent);
+          } catch (dlqError) {
+            this.logger.error(
+              `Failed to publish DLQ event for dispatch ${savedDispatch.id}`,
+              dlqError instanceof Error ? dlqError.stack : dlqError,
+            );
+          }
+        }
       }
     }
   }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
+import { KafkaModule } from '@app/kafka';
 import { PayloadCryptoModule } from '@app/common';
 import {
   MessageDispatchEntity,
@@ -33,6 +34,7 @@ import { WorkerEmailService } from './worker-email.service';
       MessageDispatchLogEntity,
     ])),
     TypeOrmModule.forFeature([MessageRequestEntity, MessageDispatchEntity, MessageDispatchLogEntity]),
+    KafkaModule,
     PayloadCryptoModule,
   ],
   controllers: [WorkerEmailController],
