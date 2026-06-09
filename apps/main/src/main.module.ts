@@ -7,6 +7,7 @@ import { KafkaModule } from '@app/kafka';
 import { PayloadCryptoModule } from '@app/common';
 import {
   MessageDispatchEntity,
+  MessageDlqEntity,
   MessageOutboxEntity,
   MessagePayloadEntity,
   MessageRecipientEntity,
@@ -17,6 +18,7 @@ import { MainController } from './main.controller';
 import { MainService } from './main.service';
 import { RetrySchedulerService } from './modules/retry-scheduler/retry-scheduler.service';
 import { OutboxRelayService } from './modules/outbox-relay/outbox-relay.service';
+import { DlqConsumerService } from './modules/dlq/dlq-consumer.service';
 
 @Module({
   imports: [
@@ -40,6 +42,7 @@ import { OutboxRelayService } from './modules/outbox-relay/outbox-relay.service'
       MessagePayloadEntity,
       MessageRecipientEntity,
       MessageOutboxEntity,
+      MessageDlqEntity,
     ])),
     TypeOrmModule.forFeature([
       MessageRequestEntity,
@@ -47,11 +50,12 @@ import { OutboxRelayService } from './modules/outbox-relay/outbox-relay.service'
       MessagePayloadEntity,
       MessageRecipientEntity,
       MessageOutboxEntity,
+      MessageDlqEntity,
     ]),
     KafkaModule,
     PayloadCryptoModule,
   ],
   controllers: [MainController],
-  providers: [MainService, RetrySchedulerService, OutboxRelayService],
+  providers: [MainService, RetrySchedulerService, OutboxRelayService, DlqConsumerService],
 })
 export class MainModule { }
