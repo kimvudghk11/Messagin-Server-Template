@@ -90,8 +90,11 @@ export class ClientAuthService {
   private extractClientIp(request: HeaderAccessibleRequest): string {
     const forwarded = request.header('x-forwarded-for');
     if (forwarded) {
-      const first = forwarded.split(',')[0]?.trim();
-      if (first) return first;
+      // Rightmost IP is appended by the last trusted proxy — not client-controlled.
+      // Requires the reverse proxy to strip and rewrite X-Forwarded-For.
+      const ips = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
+      const last = ips[ips.length - 1];
+      if (last) return last;
     }
     return request.ip ?? '0.0.0.0';
   }
